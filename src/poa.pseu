@@ -1,0 +1,17 @@
+1. Pseudo code for POA
+for (i:node_N) {
+    for (j:query_len) {
+        // At the beginning of the loop:
+        // pi = [precursor id of node i]
+        // eh[pi][j] = { H[pi,j-1], E[pi,j]}
+        // f = F(i,j)
+        // h1 = H(i,j-1)
+        H[pi,j-1], E[pi,j] = eh[pi][j]
+        eh[pi][j].H = h1
+        M(i,j, pi) = H[pi,j-1] + S[i,j]
+        E(i,j, pi) = max{M[pi,j]-gapo, E[pi,j]} - gape
+        H(i,j) = max{M(i,j, pi), E[i,j,pi], F(i,j)
+        h1 = H(i,j)
+
+    }
+}

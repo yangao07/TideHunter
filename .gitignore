@@ -1,0 +1,53 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+.idea/*
+
+# Snakemake
+.snakemake
+benchmark/*
+alignment/*
+gtf/*
+logs/*
+
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+lr2gtf
+gdb_lr2gtf
+bin/*
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+
+#data
+data/*
+
+#tags
+tags
+cscope.*

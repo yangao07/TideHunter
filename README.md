@@ -1,1 +1,1 @@
-# NanoCirc
+# miniTandem
