@@ -4,6 +4,11 @@
 #include "poa_graph.h"
 #include "poa_align.h"
 #include "utils.h"
+#include "kdq.h"
+
+
+KDQ_INIT(int)
+#define kdq_int_t kdq_t(int)
 
 poa_node_t *poa_init_node(int n) {
     poa_node_t *node = (poa_node_t*)_err_calloc(n, sizeof(poa_node_t));
@@ -44,23 +49,9 @@ void poa_free_edge(poa_edge_t *edge, int n) {
 // 0: in_edge, 1: out_edge
 poa_graph_t *poa_realloc_graph_edge(poa_graph_t *graph, int io, int id) {
     if (io == 0) {
-        if (graph->node[id].in_edge_m <= 0) {
-            graph->node[id].in_edge_m = 1;
-            graph->node[id].in_id = (int*)_err_malloc(sizeof(int));
-        }
-        if (graph->node[id].in_edge_n == graph->node[id].in_edge_m) {
-            graph->node[id].in_edge_m <<= 1;
-            graph->node[id].in_id = (int*)_err_realloc(graph->node[id].in_id, graph->node[id].in_edge_m * sizeof(int));
-        }
+        _uni_realloc(graph->node[id].in_id, graph->node[id].in_edge_n, graph->node[id].in_edge_m, int);
     } else {
-        if (graph->node[id].out_edge_m <= 0) {
-            graph->node[id].out_edge_m = 1;
-            graph->node[id].out_id = (int*)_err_malloc(sizeof(int));
-        }
-        if (graph->node[id].out_edge_n == graph->node[id].out_edge_m) {
-            graph->node[id].out_edge_m <<= 1;
-            graph->node[id].out_id = (int*)_err_realloc(graph->node[id].out_id, graph->node[id].out_edge_m * sizeof(int));
-        }
+        _uni_realloc(graph->node[id].out_id, graph->node[id].out_edge_n, graph->node[id].out_edge_m, int);
     }
     return graph;
 }
@@ -101,27 +92,116 @@ void poa_free_graph(poa_graph_t *graph, int n) {
         if (graph[i].node_m > 0) poa_free_node(graph[i].node, graph[i].node_m);
         if (graph[i].edge_m > 0) poa_free_edge(graph[i].edge, graph[i].edge_m);
         if (graph[i].cons_seq) free(graph[i].cons_seq);
+        if (graph[i].node_n > 0) {
+            free(graph[i].rank_to_node_id);
+            free(graph[i].node_id_to_rank);
+            free(graph[i].level_to_node_id);
+            free(graph[i].node_id_to_level);
+            free(graph[i].level_index);
+        }
     }
     free(graph);
 }
 
 int poa_graph_node_id_to_rank(poa_graph_t *graph, int node_id) {
-    if (node_id == 0) return 0;
-    else return node_id-1;
+    if (node_id < 0 || node_id >= graph->node_n) err_fatal(__func__, "Wrong node id: %d\n", node_id);
+    return graph->node_id_to_rank[node_id];
 }
 
 int poa_graph_rank_to_node_id(poa_graph_t *graph, int rank_i) {
-    if (rank_i == 0) return 0;
-    else return rank_i+1;
+    if (rank_i < 0 || rank_i >= graph->node_n) err_fatal(__func__, "Wrong rank: %d\n", rank_i);
+    return graph->rank_to_node_id[rank_i];
 }
 
-//TODO 
-//1. node_rank
-//2. node.cumul_len
+void poa_set_node_rank_level(poa_graph_t *graph, int src_id, int sink_id, int *in_degree) {
+    int *id, i, out_id, q_size, new_q_size;
+    int level = 0, level_i = 0, rank = 0;
+    kdq_int_t *q = kdq_init_int();
+
+    // node[q.id].in_degree equals 0
+    // Breadth-First-Search
+    kdq_push_int(q, src_id); q_size = 1; new_q_size = 0;
+    while (q_size > 0) {
+        if ((id = kdq_shift_int(q)) == 0) err_fatal_simple("Error in queue.\n");
+        graph->rank_to_node_id[rank] = *id;
+        graph->node_id_to_rank[*id] = rank++;
+        graph->level_to_node_id[level_i++] = *id;
+        graph->node_id_to_level[*id] = level;
+        if (*id == sink_id) {
+            graph->level_n = level;
+            kdq_destroy_int(q);
+            return;
+        }
+
+        for (i = 0; i < graph->node[*id].out_edge_n; ++i) {
+            out_id = graph->node[*id].out_id[i];
+            if (--in_degree[out_id] == 0) {
+                kdq_push_int(q, out_id);
+                ++new_q_size;
+            }
+        }
+        if (--q_size == 0) {
+            graph->level_index[level] = level_i;
+            level++;
+            q_size = new_q_size;
+            new_q_size = 0;
+        }
+    }
+}
+
+// update:
+// 1. rank_to_node_id
+// 2. node_id_to_rank
+// 3. level_to_node_id
+// 4. node_id_to_level
+// 5. node.cumul_len XXX
 int poa_topological_sort(poa_graph_t *graph) {
+    if (graph->node_n <= 0) {
+        err_func_format_printf(__func__, "Empty graph.\n");
+        return 0;
+    }
+
+    int i, node_n = graph->node_n;
+    graph->rank_to_node_id = (int*)_err_realloc(graph->rank_to_node_id, node_n * sizeof(int));
+    graph->node_id_to_rank = (int*)_err_realloc(graph->node_id_to_rank, node_n * sizeof(int));
+    graph->level_to_node_id = (int*)_err_realloc(graph->level_to_node_id, node_n * sizeof(int));
+    graph->node_id_to_level = (int*)_err_realloc(graph->node_id_to_level, node_n * sizeof(int));
+    graph->level_index = (int*)_err_realloc(graph->level_index, node_n * sizeof(int));
+    int *in_degree = (int*)_err_malloc(graph->node_n * sizeof(int));
+    for (i = 0; i < graph->node_n; ++i) {
+        in_degree[i] = graph->node[i].in_edge_n;
+    }
+
+    // start from POA_SRC_NODE_ID to POA_SINK_NODE_ID
+    poa_set_node_rank_level(graph, POA_SRC_NODE_ID, POA_SINK_NODE_ID, in_degree);
+
+    free(in_degree);
     return 0;
 }
 
+int poa_get_aligned_id(poa_graph_t *graph, int node_id, uint8_t base) {
+    int i;
+    poa_node_t *node = graph->node;
+    for (i = 0; i < node[node_id].aligned_node_n; ++i) {
+        if (node[node[node_id].aligned_node_id[i]].base == base)
+            return graph->node[node_id].aligned_node_id[i];
+    }
+    return -1;
+}
+
+void poa_add_graph_aligned_node1(poa_node_t *node, int aligned_id) {
+    _uni_realloc(node->aligned_node_id, node->aligned_node_n, node->aligned_node_m, int);
+    node->aligned_node_id[node->aligned_node_n++] = aligned_id;
+}
+void poa_add_graph_aligned_node(poa_graph_t *graph, int node_id, int aligned_id) {
+    int i; poa_node_t *node = graph->node;
+    for (i = 0; i < node[node_id].aligned_node_n; ++i) {
+        poa_add_graph_aligned_node1(node + node[node_id].aligned_node_id[i], aligned_id);
+        poa_add_graph_aligned_node1(node + aligned_id, node[node_id].aligned_node_id[i]);
+    }
+    poa_add_graph_aligned_node1(graph->node + node_id, aligned_id);
+    poa_add_graph_aligned_node1(graph->node + aligned_id, node_id);
+}
 
 int poa_align_sequence_with_graph(poa_graph_t *graph, uint8_t *query, int qlen, poa_para_t *ppt, int *n_cigar, poa_cigar_t **graph_cigar) {
     if (graph->node_n <= 2 || qlen <= 0) { // empty graph or seq
@@ -189,7 +269,7 @@ int poa_add_graph_sequence(poa_graph_t *graph, uint8_t *seq, int seq_l, int star
         poa_add_graph_edge(graph, node_id-1, node_id, 0);
     }
     poa_add_graph_edge(graph, node_id, POA_SINK_NODE_ID, 0);
-    
+    poa_topological_sort(graph);
     return 0;
 }
 
@@ -202,7 +282,7 @@ int poa_add_graph_sequence(poa_graph_t *graph, uint8_t *seq, int seq_l, int star
 // 6. For all first/last node, link to virtual start/end node
 int poa_add_graph_alignment(poa_graph_t *graph, uint8_t *seq, int seq_l, int n_cigar, poa_cigar_t *poa_cigar) {
     if (graph->node_n == 2) { // empty graph FIXME : when 
-        return poa_add_graph_sequence(graph, seq, seq_l, 0, seq_l);
+        poa_add_graph_sequence(graph, seq, seq_l, 0, seq_l);
     } else {
         if (graph->node_n < 2) {
             err_fatal(__func__, "Graph node: %d.\n", graph->node_n);
@@ -211,7 +291,7 @@ int poa_add_graph_alignment(poa_graph_t *graph, uint8_t *seq, int seq_l, int n_c
         }
     }
     // normal graph, normal graph_cigar
-    int i, j; int op, len, node_id, query_id, last_new = 0, last_id = POA_SRC_NODE_ID, new_id;//, aligned_id;
+    int i, j; int op, len, node_id, query_id, last_new = 0, last_id = POA_SRC_NODE_ID, new_id, aligned_id;
     for (i = 0; i < n_cigar; ++i) {
         op = poa_cigar[i] & 0xf;
         if (op == POA_CMATCH) {
@@ -222,14 +302,16 @@ int poa_add_graph_alignment(poa_graph_t *graph, uint8_t *seq, int seq_l, int n_c
             node_id = (poa_cigar[i] >> 34) & 0x3fffffff;
             query_id = (poa_cigar[i] >> 4) & 0x3fffffff;
             // check if query base is identical to node_id's aligned node XXX ??? XXX
-            //if ((aligned_id = poa_get_aligned_id(graph, node_id, seq[query_id])) >= 0) {
-            //    poa_add_graph_edge(graph, last_id, aligned_id);
-            //    last_id = aligned_id;
-            //}
-            new_id = poa_add_graph_node(graph, seq[query_id]);
-            poa_add_graph_edge(graph, last_id, new_id, 0);
-            // add new_id to node_id's aligned node
-            last_id = new_id; last_new = 1;
+            if ((aligned_id = poa_get_aligned_id(graph, node_id, seq[query_id])) >= 0) {
+                poa_add_graph_edge(graph, last_id, aligned_id, 1-last_new);
+                last_id = aligned_id; last_new = 0;
+            } else {
+                new_id = poa_add_graph_node(graph, seq[query_id]);
+                poa_add_graph_edge(graph, last_id, new_id, 0);
+                last_id = new_id; last_new = 1;
+                // add new_id to node_id's aligned node
+                poa_add_graph_aligned_node(graph, node_id, new_id);
+            }
         } else if (op == POA_CINS || op == POA_CSOFT_CLIP || op == POA_CHARD_CLIP) {
             query_id = (poa_cigar[i] >> 34) & 0x3fffffff;
             len = (poa_cigar[i] >> 4) & 0x3fffffff;

@@ -112,6 +112,17 @@ extern "C" {
 }
 #endif
 
+#define _uni_realloc(p, n, m, type) {                   \
+    if (m <= 0) {                                       \
+        m = 1;                                          \
+        m = MAX_OF_TWO(n, m);                           \
+        p = (type*)_err_malloc((m) * sizeof(type));     \
+    } else if (n >= m) {                                \
+        m = MAX_OF_TWO(n+1, m << 1);                    \
+        p = (type*)_err_realloc(p, (m) * sizeof(type)); \
+    }                                                   \
+}
+
 #define _realloc(p, m, type) {(m) <<= 1; p = (type*)_err_realloc(p, (m) * sizeof(type));}
 
 #define _sim_insert(v, p, n, m, type) { \
