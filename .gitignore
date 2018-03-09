@@ -7,10 +7,7 @@
 
 # Snakemake
 .snakemake
-benchmark/*
-alignment/*
-gtf/*
-logs/*
+dot_plot/*
 
 
 # Precompiled Headers
@@ -31,8 +28,6 @@ logs/*
 *.dylib
 
 # Executables
-lr2gtf
-gdb_lr2gtf
 bin/*
 *.exe
 *.out

@@ -211,11 +211,11 @@ extern "C" {
     }   \
 } 
 
-#define MIN_OF_TWO(a, b) (a < b ? a : b)
-#define MAX_OF_TWO(a, b) (a > b ? a : b)
-#define MIN_OF_THREE(a, b, c) (a < b ? (a < c ? a : c) : (b < c ? b : c))
-#define MAX_OF_THREE(a, b, c) (a > b ? (a > c ? a : c) : (b > c ? b : c))
-#define AVG_OF_TWO(a, b) ((a&b) + ((a^b) >> 1))
+#define MIN_OF_TWO(a, b) ((a) < (b) ? (a) : (b))
+#define MAX_OF_TWO(a, b) ((a) > (b) ? (a) : (b))
+#define MIN_OF_THREE(a, b, c) ((a) < (b) ? ((a) < (c) ? (a) : (c)) : ((b) < (c) ? (b) : (c)))
+#define MAX_OF_THREE(a, b, c) ((a) > (b) ? ((a) > (c) ? (a) : (c)) : ((b) > (c) ? (b) : (c)))
+#define AVG_OF_TWO(a, b) (((a)&(b)) + (((a)^(b)) >> 1))
 
 static inline uint64_t hash_64(uint64_t key)
 {

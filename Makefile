@@ -7,6 +7,7 @@ PYLIB   =   -lpython2.7
 LIB     =	$(MINMAP2LIB) -lm -lz -lpthread $(PYLIB)
 PY_DIR = /usr/include/python2.7
 INCLUDE = -I $(MINIMAP2_DIR) -I $(PY_DIR)
+#TODO different -I for different .c
 
 BIN_DIR =	./bin
 SRC_DIR =   ./src

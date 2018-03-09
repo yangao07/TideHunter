@@ -8,13 +8,15 @@ extern "C" {
 #endif
 
 typedef struct {
-    int m; int8_t *mat;
     // score matrix
-    int match, mismatch, gap_open, gap_ext;
+    int m; int8_t *mat;
+    int8_t match, mismatch, gap_open, gap_ext;
     int bw; // band width
     int zdrop, end_bonus; // from minimap2
     // alignment mode
     int align_mode; // 0: global, 1: local, 2: extend
+    // bits number
+    int8_t score_n, id_n;
 } poa_para_t;
 
 poa_para_t *poa_para_init(void);
@@ -26,6 +28,5 @@ int poa_main(int seq_n, char (*seq)[100], poa_para_t *ppt);
 #ifdef __cplusplus
 }
 #endif
-
 
 #endif
