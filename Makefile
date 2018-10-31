@@ -25,12 +25,9 @@ DMARCRO 	=	-D __DEBUG__
 		$(CC) -c $(CFLAGS) $(INCLUDE) $< -o $@
 
 all:		$(MINMAP2LIB) $(BIN) 
-miniTandem: $(HTSLIB) $(BIN)
+miniTandem: $(BIN)
 gdb_miniTandem: $(SOURCE) $(GDB_DEBUG) 
 
-
-$(HTSLIB):
-	cd $(MINIMAP2_DIR); make;
 
 
 $(BIN): $(OBJS)
