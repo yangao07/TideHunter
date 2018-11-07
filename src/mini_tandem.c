@@ -1,9 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include "mini_tandem.h"
+#include "self_hash.h"
 #include "utils.h"
 #include "kseq.h"
-#include <pthread.h>
 
 KSEQ_INIT(gzFile, gzread)
 
@@ -44,11 +45,12 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tandem_seq, 
 }
 
 int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tandem_seq, mini_tandem_para *mtp) {
-    // 0. generate coordinate of all the hits
-    // 1. chaining
-    // 2. keep top N chains, (calcuate density of each chain)
+    // 0. build Hash index, generate coordinate of all the hits (x,y)
+    // 1. chaining by partition based on (y-x) values
+    // 2. keep top N chains, (calcuate density of each chain: tot_N_hits / tot_N_kmer)
     // 3. call consensus with each chain
     // 4. polish consensus result
+    hash_partition(read_seq->seq.s, read_seq->seq.l, mtp);
     return 0;
 }
 
@@ -98,6 +100,8 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->k = KMER_SIZE;
     mtp->w = KMER_WSIZE;
     mtp->m = KMER_MINM;
+    mtp->sigma = HIT_BKT_SIG;
+    mtp->bucket_T = HIT_BKT_SIZE;
     mtp->max_range = REP_RANGE;
 
     return mtp;
@@ -150,7 +154,6 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
         }
         // output initial consensus sequences
         mini_tandem_output(n_seqs, read_seq, tseq, mtp);
-
     }
     // free 
     pthread_rwlock_destroy(&RWLOCK);
