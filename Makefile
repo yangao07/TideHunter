@@ -1,5 +1,5 @@
 CC      =	gcc
-CFLAGS  =	-Wall -O2 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 DFLAGS  =	-g -Wall  
 MINIMAP2_DIR = ./minimap2
 MINMAP2LIB  =   $(MINIMAP2_DIR)/libminimap2.a

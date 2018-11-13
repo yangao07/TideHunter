@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "mini_tandem.h"
-#include "self_hash.h"
+#include "self_chain.h"
 #include "utils.h"
 #include "kseq.h"
 
