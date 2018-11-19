@@ -32,13 +32,16 @@ typedef struct {
 } dp_score_t;
 
 typedef struct {
-    int from_i, from_j, i, j; // i : index of end postion, j : index of hit of end
+    int from_i, from_j; // i : index of end postion, j : index of hit of end
+    int start, end;
     double period, score;
     int8_t is_tracked;
 } self_dp_t;
 
 typedef struct {
     int start_i, start_j, end_i, end_j;
+    cell_t *chain;
+    int len;
 } chain_t;
 
 typedef struct {

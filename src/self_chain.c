@@ -244,59 +244,96 @@ int sort_dp_score(self_dp_t **dp, int *array_size, int tot_n, dp_score_t *score_
     return k;
 }
 
+void reverse_chain(chain_t *ch) {
+    int i, tmp_i, tmp_j;
+    for (i = 0; i < ch->len >> 1; ++i) {
+        tmp_i = ch->chain[i].i, tmp_j = ch->chain[i].j;
+        ch->chain[i].i = ch->chain[ch->len-i].i, ch->chain[i].j = ch->chain[ch->len-i].j; 
+        ch->chain[ch->len-i].i = tmp_i, ch->chain[ch->len-i].j = tmp_j; 
+    }
+}
+
 // backtrack from (x, y)
-int backtrack_dp(self_dp_t **dp, int tot_n, int x, int y, int *start_x, int *start_y) {
+int backtrack_dp(self_dp_t **dp, int tot_n, int x, int y, chain_t *ch) {
     int cur_i = x, cur_j = y;
     int pre_i, pre_j;
     int chain_len = 0;
     while (1) {
         // chain_add_hit(cur_i, cur_j);
         dp[cur_i][cur_j].is_tracked = 1;
-        ++chain_len;
+        ch->chain[++chain_len] = (cell_t){cur_i, cur_j};
 
         pre_i = dp[cur_i][cur_j].from_i;
         pre_j = dp[cur_i][cur_j].from_j;
         if (dp[pre_i][pre_j].is_tracked || pre_i == tot_n) break;
         cur_i = pre_i; cur_j = pre_j;
     }
-    *start_x = cur_i, *start_y = cur_j;
+    ch->len = chain_len;
+    // reverse chain
+    reverse_chain(ch);
     return chain_len;
 }
 
 void init_dp(hash_t *hit_h, self_dp_t **dp, int *hash_index, int *size, int total_n) {
-    dp[total_n][0] = (self_dp_t){-1, -1, total_n, 0, 0.0, 0.0, 0};
+    dp[total_n][0] = (self_dp_t){-1, -1, 0, 0, 0.0, 0.0, 0};
     int i, j, hash_i;
+    int start, end, period;
     for (i = 0; i < total_n; ++i) {
         for (j = 0; j < size[i]; ++j) {
             hash_i = hash_index[i] + j;
-            dp[i][j] = (self_dp_t){total_n, 0, i, j, (double)(hit_h[hash_i] & _32mask), 0.0, 0};
+            end = hit_h[hash_i] >> 32;
+            period = hit_h[hash_i] & _32mask;
+            start = end - period;
+            dp[i][j] = (self_dp_t){total_n, 0, start, end, (double)(period), 0.0, 0};
         }
     }
 }
 
 // TODO INS/DEL connection
-double get_con_score(hash_t *hit_h, int pre_i, double pre_p, int cur_i, double *period, int k) {
-    double cur_p = (double)(hit_h[cur_i] & _32mask);
-    double f = cur_p / pre_p;
-    double s = (double)(MIN_OF_TWO((hit_h[cur_i] >> 32) - (hit_h[pre_i] >> 32), k));
+double get_con_score(int cur_end, double cur_period, int pre_end, double pre_period, double *period, int k) {
+    double f = cur_period / pre_period;
+    double s = (double)(MIN_OF_TWO(cur_end - pre_end, k));
 
     if (0.9 <= f && f <= 1.1) { // similar period
-        *period = cur_p;
+        *period = cur_period;
     } else if ((int)(f+0.5) == 0) {
-        *period = cur_p;
+        *period = cur_period;
         s = 0;
     } else if (fabs((int)(f+0.5) - f) <= 0.1) { // x-fold period
-        *period = pre_p;
+        *period = pre_period;
         s /= (int)(f+0.5);
     } else { 
-        *period = cur_p;
+        *period = cur_period;
         s = 0;
     }
     return s;
 }
 
+int remove_alone_hit(self_dp_t **dp, chain_t ch) {
+    if (ch.len < 3) return 0;
+    int i;
+    int pre_i = ch.chain[0].i, pre_j = ch.chain[0].j; int pre_end = dp[pre_i][pre_j].end;
+    int cur_i = ch.chain[1].i, cur_j = ch.chain[1].j; int cur_end = dp[cur_i][cur_j].end;
+    int next_i, next_j, next_end;
+    double cur_p;
+    for (i = 1; i < ch.len-1; ++i) {
+        next_i = ch.chain[i+1].i, next_j = ch.chain[i+1].j;
+        next_end = dp[next_i][next_j].end;
+
+        cur_p = dp[cur_i][cur_j].period;
+        if ((double)(next_end - pre_end) > cur_p) {
+            printf("remove: %d, %lf %d\n", cur_end, cur_p, cur_end - dp[cur_i][cur_j].start);
+        }
+
+        pre_end = cur_end; cur_end = next_end;
+        cur_i = next_i; cur_j = next_j;
+    }
+
+    return 0;
+}
+
 // TODO allocate DP matrix uniformly
-int self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k) {
+chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k) {
     int i, j, k;
 
     // calculate DP matrix size, allocate DP matrix
@@ -331,27 +368,26 @@ int self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k) {
     init_dp(hit_h, dp, hash_index, array_size, tot_n);
 
     // main DP process
-    int cur_i, cur_j, pre_i, pre_j, pre_hash_i, cur_hash_i, max_pre_i, max_pre_j, iter_n;
-    double score, max_score, con_score, con_period, max_period, pre_p;
+    int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, iter_n;
+    double score, max_score, con_score, con_period, max_period, cur_p, pre_p;
     int max_h = 10;
     printf("%d\n", tot_n);
     for (cur_i = 1; cur_i < tot_n; ++cur_i) {
         for (cur_j = 0; cur_j < array_size[cur_i]; ++cur_j) {
-            cur_hash_i = hash_index[cur_i] + cur_j;
+            cur_p = dp[cur_i][cur_j].period;
             max_score = 0, iter_n = 0;
             for (pre_i = cur_i-1; pre_i >= 0; --pre_i) {
-                if ((hit_h[hash_index[pre_i]] >> 32) < ((hit_h[cur_hash_i] >> 32) - (hit_h[cur_hash_i] & _32mask))) goto UPDATE;
+                if (dp[pre_i][0].end < dp[cur_i][cur_j].start) goto UPDATE;
                 for (pre_j = 0; pre_j < array_size[pre_i]; ++pre_j) {
-                    pre_hash_i = hash_index[pre_i] + pre_j;
                     pre_p = dp[pre_i][pre_j].period;
-                    if ((con_score = get_con_score(hit_h, pre_hash_i, pre_p, cur_hash_i, &con_period, kmer_k)) == 0) continue;
+                    if ((con_score = get_con_score(dp[cur_i][0].end, cur_p, dp[pre_i][0].end, pre_p, &con_period, kmer_k)) == 0) continue;
                     score = dp[pre_i][pre_j].score + con_score;
                     if (score > max_score) {
                         max_score = score;
                         max_pre_i = pre_i, max_pre_j = pre_j;
                         max_period = con_period;
                         iter_n = 0;
-                        if (fabs(con_period - (hit_h[cur_hash_i] & _32mask)) == 0) goto UPDATE;
+                        if (fabs(con_period - (dp[cur_i][cur_j].end - dp[cur_i][cur_j].start)) == 0) goto UPDATE;
                     } else if (max_score > 0) ++iter_n;
                     // only try h iterations
                     if (iter_n >= max_h) goto UPDATE;
@@ -359,7 +395,10 @@ int self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k) {
             }
 UPDATE:
             if (max_score > 0) {
-                dp[cur_i][cur_j] = (self_dp_t){max_pre_i, max_pre_j, cur_i, cur_j, max_period, max_score, 0};
+                dp[cur_i][cur_j].from_i = max_pre_i;
+                dp[cur_i][cur_j].from_j = max_pre_j;
+                dp[cur_i][cur_j].period = max_period;
+                dp[cur_i][cur_j].score = max_score;
             }
         }
     }
@@ -367,30 +406,43 @@ UPDATE:
     // backtrack, obtain top N chains
     dp_score_t *score_rank = (dp_score_t*)_err_malloc(hit_n * sizeof(dp_score_t));
     int score_n = sort_dp_score(dp, array_size, tot_n, score_rank);
-    int top_N = 10000, ch_n, start_i, start_j, chain_len;
+    int top_N = 10000, ch_n, chain_len;
     chain_t *ch = (chain_t*)_err_malloc(top_N * sizeof(chain_t));
+    for (i = 0; i < top_N; ++i) {
+        ch[i].chain = (cell_t*)_err_malloc(tot_n * sizeof(cell_t));
+    }
     i = 0, ch_n = 0;
     while (i < score_n && ch_n < top_N) {
-        chain_len = backtrack_dp(dp, tot_n, score_rank[i].i, score_rank[i].j, &start_i, &start_j);
-        if (chain_len > 0) {
-            ch[ch_n++] = (chain_t){start_i, start_j, score_rank[i].i, score_rank[i].j};
-        }
+        chain_len = backtrack_dp(dp, tot_n, score_rank[i].i, score_rank[i].j, ch+ch_n);
+        if (chain_len > 0) ++ch_n;
         ++i;
     }
     for (i = 0; i < ch_n; ++i) {
-        printf("%d: score: %lf (%ld,%lf,%ld) -> (%ld,%lf,%ld)\n", i+1, dp[ch[i].end_i][ch[i].end_j].score, hit_h[hash_index[ch[i].start_i] + ch[i].start_j] >> 32, dp[ch[i].start_i][ch[i].start_j].period, hit_h[hash_index[ch[i].start_i] + ch[i].start_j] & _32mask, hit_h[hash_index[ch[i].end_i] + ch[i].end_j] >> 32, dp[ch[i].end_i][ch[i].end_j].period, hit_h[hash_index[ch[i].end_i] + ch[i].end_j] & _32mask);
+        if (ch[i].len > 50)
+            printf("%d: score: %lf, len: %d (%ld,%lf,%ld) -> (%ld,%lf,%ld)\n", i+1, dp[ch[i].end_i][ch[i].end_j].score, ch[i].len, hit_h[hash_index[ch[i].start_i] + ch[i].start_j] >> 32, dp[ch[i].start_i][ch[i].start_j].period, hit_h[hash_index[ch[i].start_i] + ch[i].start_j] & _32mask, hit_h[hash_index[ch[i].end_i] + ch[i].end_j] >> 32, dp[ch[i].end_i][ch[i].end_j].period, hit_h[hash_index[ch[i].end_i] + ch[i].end_j] & _32mask);
     }
 
     // post-process of N chains
     // 1. remove stand-alone hit
+    ch_n = 1;
     for (i = 0; i < ch_n; ++i) {
+        remove_alone_hit(dp, ch[i]);
     }
     // 2. merge into larger chain that contains INS/DEL
 
     for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); free(array_size); free(hash_index);
-    free(score_rank); free(ch);
+    for (i = 0; i < top_N; ++i) free(ch[i].chain); free(ch);
+    free(score_rank);
+    return ch[0];
+}
+
+int partition_seqs(chain_t ch) {
+    int i, j;
+
     return 0;
 }
+
+
 
 // TODO post-process of projected region
 
@@ -402,13 +454,16 @@ UPDATE:
 int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
     int8_t *bseq = (int8_t*)_err_malloc(seq_len * sizeof(int8_t));
     get_bseq(seq, seq_len, bseq);
+
     hash_t *h = (hash_t*)_err_malloc(seq_len / mtp->w * sizeof(hash_t));
     int hn = direct_hash(bseq, seq_len, mtp->k, mtp->w, h);
     if (hn == 0) return 0;
 
     hash_t *hit_h;
     int hit_n = collect_hash_hit(h, hn, &hit_h); free(h);
-    self_dp_chain(hit_h, hit_n, mtp->k);
+    chain_t ch = self_dp_chain(hit_h, hit_n, mtp->k);
+
+    // partition_seqs();
 
 
     //int hb_m = 20; hit_bucket_t *hb;
