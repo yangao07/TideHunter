@@ -3,6 +3,8 @@
 #include <math.h>
 #include "mini_tandem.h"
 #include "self_chain.h"
+#include "edlib_align.h"
+#include "spoa_align.h"
 #include "seq.h"
 #include "utils.h"
 #include "ksort.h"
@@ -333,7 +335,7 @@ int remove_alone_hit(self_dp_t **dp, chain_t ch) {
 }
 
 // TODO allocate DP matrix uniformly
-chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k) {
+chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k, self_dp_t ***_dp, int *tot_N) {
     int i, j, k;
 
     // calculate DP matrix size, allocate DP matrix
@@ -344,9 +346,11 @@ chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k) {
             tot_n += 1;
         }
     }
+    *tot_N = tot_n;
     array_size = (int*)_err_malloc(sizeof(int) * tot_n);
     hash_index = (int*)_err_malloc(sizeof(int) * tot_n);
-    self_dp_t **dp = (self_dp_t**)_err_calloc((tot_n+1), sizeof(self_dp_t*));
+    *_dp = (self_dp_t**)_err_calloc((tot_n+1), sizeof(self_dp_t*));
+    self_dp_t **dp = *_dp;
     dp[tot_n] = (self_dp_t*)_err_calloc(1, sizeof(self_dp_t));
     j = 0, k = 1;
     int idx = 0;
@@ -430,19 +434,103 @@ UPDATE:
     }
     // 2. merge into larger chain that contains INS/DEL
 
-    for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); free(array_size); free(hash_index);
-    for (i = 0; i < top_N; ++i) free(ch[i].chain); free(ch);
-    free(score_rank);
+    chain_t ret_ch;
+    ret_ch.len = ch[0].len;
+    ret_ch.chain = (cell_t*)_err_malloc(ret_ch.len * sizeof(cell_t));
+    for (i = 0; i < ret_ch.len; ++i) {
+        ret_ch.chain[i].i = ch[0].chain[i].i;
+        ret_ch.chain[i].j = ch[0].chain[i].j;
+        ret_ch.start_i = ch[0].start_i, ret_ch.start_j = ch[0].start_j; 
+        ret_ch.end_i = ch[0].end_i, ret_ch.end_j = ch[0].end_j;
+    }
+
+    // for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
+    free(array_size); free(hash_index);
+    for (i = 0; i < top_N; ++i) free(ch[i].chain); free(ch); free(score_rank);
     return ch[0];
 }
 
-int partition_seqs(chain_t ch) {
-    int i, j;
+// TODO pos: 1-base or 0-base???
+int partition_seqs_core(char *seq, int8_t *hit_array, double period, int *par_pos) {
+    int i, j, seq_len = strlen(seq);
+    int *pos_array = (int*)_err_malloc(sizeof(int) * seq_len);
+    int hit_n = 0;
+    for (i = 0; i < seq_len; ++i) {
+        if (hit_array[i]) pos_array[hit_n++] = i;
+    }
+    // partition seq into period seperated seqs
+    // if (pos_array[0] > p) { // 0th copy
+    // }
+    int par_i = 0, l = 20, tot_len; // TODO length of l-mer
+    char *query_seq, *target_seq; int ed, start, end;
+    par_pos[par_i++] = pos_array[0];
+    for (i = 0; i < hit_n-1; ++i) {
+        int copy_num = (int)((double)(pos_array[i+1] - pos_array[i]) / period + 0.5);
+        if (copy_num == 0) err_fatal(__func__, "Unexpected copy number. (%d, %d, %lf)\n", pos_array[i], pos_array[i+1], period);
 
-    return 0;
+        if (copy_num > 1) { // multiple copies: semi-global alignment of prefix l-mer using edlib
+            tot_len = pos_array[i+1] - pos_array[i];
+            query_seq = seq + pos_array[i];
+            for (j = 1; j < copy_num; ++j) {
+                target_seq = seq + pos_array[i] + tot_len / copy_num * j - 2 * l;
+                ed = edlib_align_HW(query_seq, l, target_seq, 4 * l, &start, &end);
+                if (ed < 0) { // no alignment result
+                    par_pos[par_i++] = -1; // skip this copy
+                } else {
+                    par_pos[par_i++] = pos_array[i] + tot_len / copy_num * j - 2 * l + start;
+                }
+            }
+        }
+        par_pos[par_i++] = pos_array[i+1];
+    }
+
+    free(pos_array);
+    return par_i;
 }
 
+int partition_seqs(char *seq, self_dp_t **dp, chain_t ch, int *par_pos) {
+    int i, j, start, end, seq_len;
+    self_dp_t dp_cell;
+    double period = dp[ch.chain[0].i][ch.chain[0].j].period;
+    int array_size = (int)(period) * 2;
+    seq_len = strlen(seq);
+    int8_t **hit_array = (int8_t**)_err_malloc(sizeof(int8_t*) * array_size);
+    for (i = 0; i < array_size; ++i) hit_array[i] = (int8_t*)_err_calloc(seq_len, sizeof(int8_t));
+    int hit_i = 0, hit;
+    // fill hit array
+    for (i = 0; i < ch.len; ++i) {
+        dp_cell = dp[ch.chain[i].i][ch.chain[i].j];
+        start = dp_cell.start, end = dp_cell.end;
+        hit = 0;
+        for (j = 0; j < hit_i; ++j) {
+            if (hit_array[j][start]) {
+                hit_array[j][end] = 1;
+                hit = 1;
+            } else if (hit_array[j][end]) {
+                hit_array[j][start] = 1;
+                hit = 1;
+            }
+        }
+        if (hit == 0) {
+            hit_array[hit_i][start] = 1;
+            hit_array[hit_i++][end] = 1;
+        }
+    }
+    // select kmers with max hit 
+    int hit_n, max_hit_n = 0, max_i;
+    for (i = 0; i < hit_i; ++i) {
+        hit_n = 0;
+        for (j = 0; j < seq_len; ++j) hit_n += hit_array[i][j];
+        if (hit_n > max_hit_n) {
+            max_hit_n = hit_n;
+            max_i = i;
+        }
+    }
+    int par_n = partition_seqs_core(seq, hit_array[max_i], period, par_pos);
 
+    for (i = 0; i < array_size; ++i) free(hit_array[i]); free(hit_array);
+    return par_n;
+}
 
 // TODO post-process of projected region
 
@@ -459,18 +547,31 @@ int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
     int hn = direct_hash(bseq, seq_len, mtp->k, mtp->w, h);
     if (hn == 0) return 0;
 
-    hash_t *hit_h;
+    hash_t *hit_h; self_dp_t **dp; int tot_n;
     int hit_n = collect_hash_hit(h, hn, &hit_h); free(h);
-    chain_t ch = self_dp_chain(hit_h, hit_n, mtp->k);
-
-    // partition_seqs();
-
-
-    //int hb_m = 20; hit_bucket_t *hb;
-    //hb = (hit_bucket_t*)_err_malloc(hb_m * sizeof(hit_bucket_t));
-    //int hb_n = cluster_hash_hit(hit_h, hit_n, &hb, &hb_m, mtp->sigma, mtp->bucket_T);
-    //cal_proj_reg(hit_h, hit_n, hb, hb_n-1);
-
-    free(hit_h); free(bseq);
+    chain_t ch = self_dp_chain(hit_h, hit_n, mtp->k, &dp, &tot_n);
+    int p = (int)(dp[ch.chain[0].i][ch.chain[0].j].period + 0.5);
+    int *par_pos = (int*)_err_malloc(seq_len / p * 2 * sizeof(int));
+    int par_n = partition_seqs(seq, dp, ch, par_pos);
+    char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)); int i; 
+    int start = par_pos[0], end = -1, seq_i = 0;
+    for (i = 1; i < par_n-1; ++i) {
+        if (par_pos[i] < 0) {
+            start = end = -1;
+            continue;
+        }
+        if (start < 0) start = par_pos[i];
+        else if (end < 0) end = par_pos[i];
+        else { // start > 0, end > 0
+            seqs[seq_i] = (char*)_err_malloc(sizeof(char) * p * 2);
+            strncpy(seqs[seq_i++], seq + start, end - start);
+        }
+    }
+    char *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
+    spoa_msa(seqs, seq_i, cons_seq);
+    
+    free(hit_h); free(bseq); free(ch.chain); free(par_pos);
+    for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
+    for (i = 0; i < seq_i; ++i) free(seqs[i]); free(seqs); free(cons_seq);
     return 0;
 }
