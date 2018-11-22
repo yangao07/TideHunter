@@ -39,7 +39,6 @@ typedef struct {
 } self_dp_t;
 
 typedef struct {
-    int start_i, start_j, end_i, end_j;
     cell_t *chain;
     int len;
 } chain_t;

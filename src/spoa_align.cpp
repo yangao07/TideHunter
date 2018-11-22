@@ -1,11 +1,13 @@
 #include <string.h>
+//#include <iostream>
 #include "utils.h"
 #include "spoa.hpp"
 //#include "spoa_align.h"
 
 extern "C" {
     int spoa_msa(char **seqs, int seq_n, char *cons_seq) {
-        std::vector<std::string> sequences(seqs, seqs+seq_n);
+        std::vector<std::string> sequences; //(seqs, seqs+seq_n);
+        sequences.assign(seqs, seqs+seq_n);
         auto alignment_engine = spoa::createAlignmentEngine(static_cast<spoa::AlignmentType>(1), 5, -4, -8); 
         auto graph = spoa::createGraph();
         for (const auto & it: sequences) {

@@ -2,7 +2,7 @@ CC      =	gcc
 CPP		=   g++
 CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 CPPFLAGS=   -std=c++11
-DFLAGS  =	-g -Wall  
+DFLAGS  =	-g -Wall #-pg
 #MINIMAP2_DIR = ./minimap2
 #MINMAP2LIB  =   $(MINIMAP2_DIR)/libminimap2.a
 #PYLIB   =   -lpython2.7
@@ -66,23 +66,21 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 	$(CC) -c $(CFLAGS) $< -I $(EDLIB_INCLUDE) -o $@
 
 $(SPOALIB): 
-	wd=$(PWD);
-	cd $(SPOA_DIR); mkdir build; cd build;
-	cmake -DCMAKE_BUILD_TYPE=Release ..;
+	wd=$(PWD); \
+	cd $(SPOA_DIR); mkdir build; cd build; \
+	cmake -DCMAKE_BUILD_TYPE=Release ..;	\
 	make; cd $(wd);
 
 $(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPOALIB)
 	$(CPP) -c $< $(CPPFLAGS) -I $(SPOA_INCLUDE) -o $@
 
 
-$(GDB_DEBUG):
+$(GDB_DEBUG): $(DSOURCE)
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	#CFLAGS=$(DFLAGS)
-	#make clean; make
 	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
 
 clean:
 	rm -f $(SRC_DIR)/*.o $(BIN)
 
 clean_debug:
-	rm -f $(SRC_DIR)/*.o $(GDB_DEBUG)
+	rm -f $(GDB_DEBUG)

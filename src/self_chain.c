@@ -303,7 +303,7 @@ double get_con_score(int cur_end, double cur_period, int pre_end, double pre_per
         s = 0;
     } else if (fabs((int)(f+0.5) - f) <= 0.1) { // x-fold period
         *period = pre_period;
-        s /= (int)(f+0.5);
+        s /= f;
     } else { 
         *period = cur_period;
         s = 0;
@@ -374,7 +374,7 @@ chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k, self_dp_t ***_dp, in
     // main DP process
     int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, iter_n;
     double score, max_score, con_score, con_period, max_period, cur_p, pre_p;
-    int max_h = 10;
+    int max_h = 100;
     printf("%d\n", tot_n);
     for (cur_i = 1; cur_i < tot_n; ++cur_i) {
         for (cur_j = 0; cur_j < array_size[cur_i]; ++cur_j) {
@@ -391,7 +391,7 @@ chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k, self_dp_t ***_dp, in
                         max_pre_i = pre_i, max_pre_j = pre_j;
                         max_period = con_period;
                         iter_n = 0;
-                        if (fabs(con_period - (dp[cur_i][cur_j].end - dp[cur_i][cur_j].start)) == 0) goto UPDATE;
+                        // if (fabs(con_period - (dp[cur_i][cur_j].end - dp[cur_i][cur_j].start)) == 0) goto UPDATE;
                     } else if (max_score > 0) ++iter_n;
                     // only try h iterations
                     if (iter_n >= max_h) goto UPDATE;
@@ -422,8 +422,10 @@ UPDATE:
         ++i;
     }
     for (i = 0; i < ch_n; ++i) {
-        if (ch[i].len > 50)
-            printf("%d: score: %lf, len: %d (%ld,%lf,%ld) -> (%ld,%lf,%ld)\n", i+1, dp[ch[i].end_i][ch[i].end_j].score, ch[i].len, hit_h[hash_index[ch[i].start_i] + ch[i].start_j] >> 32, dp[ch[i].start_i][ch[i].start_j].period, hit_h[hash_index[ch[i].start_i] + ch[i].start_j] & _32mask, hit_h[hash_index[ch[i].end_i] + ch[i].end_j] >> 32, dp[ch[i].end_i][ch[i].end_j].period, hit_h[hash_index[ch[i].end_i] + ch[i].end_j] & _32mask);
+        if (ch[i].len > 50) {
+            int start_i = ch[i].chain[0].i, start_j = ch[i].chain[0].j, end_i = ch[i].chain[ch[i].len-1].i, end_j = ch[i].chain[ch[i].len-1].j;
+            printf("%d: score: %lf, len: %d (%ld,%lf,%ld) -> (%ld,%lf,%ld)\n", i+1, dp[end_i][end_j].score, ch[i].len, hit_h[hash_index[start_i] + start_j] >> 32, dp[start_i][start_j].period, hit_h[hash_index[start_i] + start_j] & _32mask, hit_h[hash_index[end_i] + end_j] >> 32, dp[end_i][end_j].period, hit_h[hash_index[end_i] + end_j] & _32mask);
+        }
     }
 
     // post-process of N chains
@@ -440,14 +442,12 @@ UPDATE:
     for (i = 0; i < ret_ch.len; ++i) {
         ret_ch.chain[i].i = ch[0].chain[i].i;
         ret_ch.chain[i].j = ch[0].chain[i].j;
-        ret_ch.start_i = ch[0].start_i, ret_ch.start_j = ch[0].start_j; 
-        ret_ch.end_i = ch[0].end_i, ret_ch.end_j = ch[0].end_j;
     }
 
     // for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
     free(array_size); free(hash_index);
     for (i = 0; i < top_N; ++i) free(ch[i].chain); free(ch); free(score_rank);
-    return ch[0];
+    return ret_ch;
 }
 
 // TODO pos: 1-base or 0-base???
@@ -466,7 +466,8 @@ int partition_seqs_core(char *seq, int8_t *hit_array, double period, int *par_po
     par_pos[par_i++] = pos_array[0];
     for (i = 0; i < hit_n-1; ++i) {
         int copy_num = (int)((double)(pos_array[i+1] - pos_array[i]) / period + 0.5);
-        if (copy_num == 0) err_fatal(__func__, "Unexpected copy number. (%d, %d, %lf)\n", pos_array[i], pos_array[i+1], period);
+        if (copy_num == 0) 
+            err_fatal(__func__, "Unexpected copy number. (%d, %d, %lf)\n", pos_array[i], pos_array[i+1], period);
 
         if (copy_num > 1) { // multiple copies: semi-global alignment of prefix l-mer using edlib
             tot_len = pos_array[i+1] - pos_array[i];
@@ -492,8 +493,8 @@ int partition_seqs(char *seq, self_dp_t **dp, chain_t ch, int *par_pos) {
     int i, j, start, end, seq_len;
     self_dp_t dp_cell;
     double period = dp[ch.chain[0].i][ch.chain[0].j].period;
-    int array_size = (int)(period) * 2;
     seq_len = strlen(seq);
+    int array_size = seq_len; // (int)(period) * 2;
     int8_t **hit_array = (int8_t**)_err_malloc(sizeof(int8_t*) * array_size);
     for (i = 0; i < array_size; ++i) hit_array[i] = (int8_t*)_err_calloc(seq_len, sizeof(int8_t));
     int hit_i = 0, hit;
@@ -501,19 +502,25 @@ int partition_seqs(char *seq, self_dp_t **dp, chain_t ch, int *par_pos) {
     for (i = 0; i < ch.len; ++i) {
         dp_cell = dp[ch.chain[i].i][ch.chain[i].j];
         start = dp_cell.start, end = dp_cell.end;
+        printf("start: %d, end: %d\n", start, end);
         hit = 0;
         for (j = 0; j < hit_i; ++j) {
             if (hit_array[j][start]) {
                 hit_array[j][end] = 1;
                 hit = 1;
+                break;
             } else if (hit_array[j][end]) {
                 hit_array[j][start] = 1;
                 hit = 1;
+                break;
             }
         }
         if (hit == 0) {
+            printf("%d: (%d, %d)\n", hit_i, start, end);
             hit_array[hit_i][start] = 1;
             hit_array[hit_i++][end] = 1;
+        } else {
+            printf("%d: (%d, %d)\n", j, start, end);
         }
     }
     // select kmers with max hit 
@@ -553,22 +560,20 @@ int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
     int p = (int)(dp[ch.chain[0].i][ch.chain[0].j].period + 0.5);
     int *par_pos = (int*)_err_malloc(seq_len / p * 2 * sizeof(int));
     int par_n = partition_seqs(seq, dp, ch, par_pos);
-    char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)); int i; 
-    int start = par_pos[0], end = -1, seq_i = 0;
-    for (i = 1; i < par_n-1; ++i) {
-        if (par_pos[i] < 0) {
-            start = end = -1;
-            continue;
-        }
-        if (start < 0) start = par_pos[i];
-        else if (end < 0) end = par_pos[i];
-        else { // start > 0, end > 0
-            seqs[seq_i] = (char*)_err_malloc(sizeof(char) * p * 2);
+    char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)); 
+    int i, seq_i = 0, start, end;
+    for (i = 0; i < par_n-1; ++i) {
+        if (par_pos[i] > 0 && par_pos[i+1] > 0) {
+            start = par_pos[i], end = par_pos[i+1];
+            seqs[seq_i] = (char*)_err_calloc((end - start + 1), sizeof(char));
             strncpy(seqs[seq_i++], seq + start, end - start);
+            printf("seqs(%d:%d,%d): %s\n", end-start, start, end, seqs[seq_i-1]);
         }
     }
+
     char *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
     spoa_msa(seqs, seq_i, cons_seq);
+    printf("cons: %s\n", cons_seq);
     
     free(hit_h); free(bseq); free(ch.chain); free(par_pos);
     for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 

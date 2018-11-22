@@ -18,7 +18,7 @@ int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, in
     EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_LOC, NULL, 0));
     if (result.status == EDLIB_STATUS_OK) {
         ed = result.editDistance, *start = result.startLocations[0], *end = result.endLocations[0];
-        printf("%d, %d, %d\n", result.editDistance, result.alignmentLength, result.endLocations[0]);
+        printf("Edlib: %d, %d, %d\n", result.editDistance, result.alignmentLength, result.endLocations[0]);
     }
     edlibFreeAlignResult(result);
     return ed;
