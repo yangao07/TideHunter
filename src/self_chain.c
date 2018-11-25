@@ -292,16 +292,19 @@ void init_dp(hash_t *hit_h, self_dp_t **dp, int *hash_index, int *size, int tota
 }
 
 // TODO INS/DEL connection
-double get_con_score(int cur_end, double cur_period, int pre_end, double pre_period, double *period, int k) {
+double get_con_score(int cur_start, int cur_end, double cur_period, int pre_start, int pre_end, double pre_period, double *period, int k) {
     double f = cur_period / pre_period;
     double s = (double)(MIN_OF_TWO(cur_end - pre_end, k));
+    int embed = (cur_start <= pre_start);
 
     if (0.9 <= f && f <= 1.1) { // similar period
+        if (embed) return 0;
         *period = cur_period;
     } else if ((int)(f+0.5) == 0) {
         *period = cur_period;
         s = 0;
     } else if (fabs((int)(f+0.5) - f) <= 0.1) { // x-fold period
+        return 0;
         *period = pre_period;
         s /= f;
     } else { 
@@ -379,12 +382,15 @@ chain_t self_dp_chain(hash_t *hit_h, int hit_n, int kmer_k, self_dp_t ***_dp, in
     for (cur_i = 1; cur_i < tot_n; ++cur_i) {
         for (cur_j = 0; cur_j < array_size[cur_i]; ++cur_j) {
             cur_p = dp[cur_i][cur_j].period;
+            printf("%d, %d\n", dp[cur_i][cur_j].start, dp[cur_i][cur_j].end);
+            if (dp[cur_i][cur_j].start == 3293 && dp[cur_i][cur_j].end == 3718)
+                printf("debug");
             max_score = 0, iter_n = 0;
             for (pre_i = cur_i-1; pre_i >= 0; --pre_i) {
                 if (dp[pre_i][0].end < dp[cur_i][cur_j].start) goto UPDATE;
                 for (pre_j = 0; pre_j < array_size[pre_i]; ++pre_j) {
                     pre_p = dp[pre_i][pre_j].period;
-                    if ((con_score = get_con_score(dp[cur_i][0].end, cur_p, dp[pre_i][0].end, pre_p, &con_period, kmer_k)) == 0) continue;
+                    if ((con_score = get_con_score(dp[cur_i][cur_i].start, dp[cur_i][0].end, cur_p, dp[pre_i][pre_j].start, dp[pre_i][0].end, pre_p, &con_period, kmer_k)) == 0) continue;
                     score = dp[pre_i][pre_j].score + con_score;
                     if (score > max_score) {
                         max_score = score;
@@ -561,6 +567,7 @@ int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
     int *par_pos = (int*)_err_malloc(seq_len / p * 2 * sizeof(int));
     int par_n = partition_seqs(seq, dp, ch, par_pos);
     char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)); 
+    char *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
     int i, seq_i = 0, start, end;
     for (i = 0; i < par_n-1; ++i) {
         if (par_pos[i] > 0 && par_pos[i+1] > 0) {
@@ -570,8 +577,6 @@ int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
             printf("seqs(%d:%d,%d): %s\n", end-start, start, end, seqs[seq_i-1]);
         }
     }
-
-    char *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
     spoa_msa(seqs, seq_i, cons_seq);
     printf("cons: %s\n", cons_seq);
     
