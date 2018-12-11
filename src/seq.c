@@ -48,15 +48,14 @@ unsigned char com_nst_nt4_table[256] = {
 };
 
 //replace 'N' with 'G':           A  C  G  T  N->G
-const int8_t hash_nt4_table[5] = {0, 1, 2, 3, 2};
+const int8_t hash_nt4_table[6] = {0, 1, 2, 3, 2, 2};
 
 char n_char[6] = {'A', 'C', 'G', 'T', 'N' };
 
 int hash_key(int8_t *bseq, int seq_len) {
     int i, hash_key = 0;
     for (i = 0; i < seq_len; ++i) {
-        if (bseq[i] >= nt_N) 
-            err_printf("Error in bseq.\n");
+        // if (bseq[i] >= nt_N) err_printf("Error in bseq.\n");
         hash_key = (hash_key << 2) | bseq[i];
     }
     return hash_key;
@@ -65,7 +64,7 @@ int hash_key(int8_t *bseq, int seq_len) {
 int hash_shift_key(int pre_key, int8_t *bseq, int pre_i, int cur_i, int k) {
     int hash_key = 0, i;
     for (i = pre_i; i < cur_i; ++i) {
-        if (bseq[i+k] >= nt_N) err_printf("Error in bseq.\n");
+        // if (bseq[i+k] >= nt_N) err_printf("Error in bseq.\n");
         hash_key = (pre_key << 2) | bseq[i+k];
     }
     return hash_key & ((1 << 2*k) - 1);
@@ -74,7 +73,7 @@ int hash_shift_key(int pre_key, int8_t *bseq, int pre_i, int cur_i, int k) {
 int get_bseq(char *seq, int seq_len, int8_t *bseq) {
     int i;
     for (i = 0; i < seq_len; ++i) {
-        bseq[i] = nst_nt4_table[(int)seq[i]];
+        bseq[i] = hash_nt4_table[nst_nt4_table[(int)seq[i]]];
     }
     return 0;
 }

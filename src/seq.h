@@ -4,7 +4,7 @@
 
 extern unsigned char nst_nt4_table[256];
 extern unsigned char com_nst_nt4_table[256];
-extern const int8_t hash_nt4_table[5];
+extern const int8_t hash_nt4_table[6];
 extern char n_char[6];
 
 int hash_key(int8_t *bseq, int seq_len);

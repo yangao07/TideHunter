@@ -2,7 +2,7 @@ CC      =	gcc
 CPP		=   g++
 CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 CPPFLAGS=   -std=c++11
-DFLAGS  =	-g -Wall #-pg
+DFLAGS  =	-g -Wall -pg
 #MINIMAP2_DIR = ./minimap2
 #MINMAP2LIB  =   $(MINIMAP2_DIR)/libminimap2.a
 #PYLIB   =   -lpython2.7
@@ -55,7 +55,7 @@ miniTandem: $(BIN)
 gdb_miniTandem: $(SOURCE) $(GDB_DEBUG) 
 
 
-$(BIN): $(OBJS)
+$(BIN): $(OBJS) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	$(CPP) $(OBJS) -L $(SPOALIB_DIR) $(LIB) -o $@
 
@@ -75,7 +75,7 @@ $(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPO
 	$(CPP) -c $< $(CPPFLAGS) -I $(SPOA_INCLUDE) -o $@
 
 
-$(GDB_DEBUG): $(DSOURCE)
+$(GDB_DEBUG): $(DSOURCE) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
 
@@ -84,3 +84,11 @@ clean:
 
 clean_debug:
 	rm -f $(GDB_DEBUG)
+
+$(SRC_DIR)/seq.o: $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
+$(SRC_DIR)/self_chain.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h 
+$(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/mini_tandem.h
+$(SRC_DIR)/mini_tandem.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
+$(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h
+$(SRC_DIR)/utils.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h
+$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/utils.h

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "edlib_align.h"
 #include "edlib.h"
 
 /*
@@ -13,9 +14,18 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+EdlibEqualityPair additionalEqualities[5] = {
+    {'a', 'A'}, 
+    {'c', 'C'},
+    {'g', 'G'},
+    {'t', 'T'},
+    {'n', 'N'}
+};
+
 int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, int *end) {
     int ed = -1;
-    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_LOC, NULL, 0));
+    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_LOC, additionalEqualities, 5));
     if (result.status == EDLIB_STATUS_OK) {
         ed = result.editDistance, *start = result.startLocations[0], *end = result.endLocations[0];
         printf("Edlib: %d, %d, %d\n", result.editDistance, result.alignmentLength, result.endLocations[0]);
