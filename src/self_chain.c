@@ -12,6 +12,10 @@
 #define sort_key_hash(x) (x)
 KRADIX_SORT_INIT(hash, hash_t, sort_key_hash, 8)
 
+static inline uint32_t hash32(uint32_t key)
+{
+	return key;
+}
 static const char LogTable256[256] = {
 #define LT(n) n, n, n, n, n, n, n, n, n, n, n, n, n, n, n, n
 	-1, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
@@ -26,42 +30,177 @@ static inline int ilog2_32(uint32_t v)
 	return (t = v>>8) ? 8 + LogTable256[t] : LogTable256[v];
 }
 
-int overlap_hash(int8_t *bseq, int seq_len, int k, int w, hash_t *h) {
-    int i, hi=0, pos, key;
 
-    pos = 0, key = hash_key(bseq, k);
+// hash: kmer-key | rightmost-pos
+int overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, hash_t *h) {
+    int hi=0, pos; uint32_t key;
+
+    pos = k-1, key = hash_key(bseq, k);
     h[hi++] = ((hash_t)key << 32) | pos;
-    for (i = w; i <= seq_len - k; i += w) {
-        pos = i;
-        key = hash_shift_key(key, bseq+i-w, 0, w, k); 
+    // printf("%d: %d\n", pos, key);
+    for (pos = k-1+s; pos < seq_len; pos += s) {
+        key = hash_shift_key(key, bseq, pos-s, pos, k); 
         h[hi++] = ((hash_t)key << 32) | pos;
+        // printf("%d: %d\n", pos, key);
     }
     return hi;
 }
 
-int non_overlap_hash(int8_t *bseq, int seq_len, int k, int w, hash_t *h) {
-    int i, hi=0, pos, key;
+int non_overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, hash_t *h) {
+    int hi=0, pos, key;
 
-    for (i = 0; i <= seq_len - k; i += w) {
-        pos = i;
-        key = hash_key(bseq+i, k); 
+    for (pos = k-1; pos < seq_len; pos += s) {
+        key = hash_key(bseq+pos-k+1, k); 
         h[hi++] = ((hash_t)key << 32) | pos;
+        // printf("%d: %d\n", pos, key);
     }
     return hi;
 }
-// return :
-// dict { k-mer_int : [pos1, pos2, ... posN] }
-int direct_hash(int8_t *bseq, int seq_len, int k, int w, hash_t *h) {
-    if (seq_len < w || seq_len < k) return 0;
 
-    if (k > w) return overlap_hash(bseq, seq_len, k, w, h);
-    else return non_overlap_hash(bseq, seq_len, k, w, h);
+// para:
+// bseq:    seq integer
+// seq_len: seq length
+// k:       kmer length
+// s:       window step
+// w:       window size (s>=w, non-overlap window)
+// m:       collect m minimal kmers (m<w, m==1 for minimizer_hash)
+// use_hpc: use homopolymer-compressed kmer
+// h:       kmer-key | rightmost-pos
+// non_overlap: no need to use buffer to store previous kmer hash values
+int non_overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
+    int i, j, pos, min_pos, hi=0;
+    uint32_t key, minimizer, hash_value;
+    int *equal_min_pos = (int*)_err_malloc(w * sizeof(int)), equal_n;
+
+    for (i = 0; i < seq_len-w-k; i += s) {
+        min_pos = i + k - 1; key = hash_key(bseq, k); minimizer = hash32(key); equal_n = 0;
+        for (pos = i+k; pos < i+k+w-1; ++pos) {
+            key = hash_shift_key(key, bseq, pos-1, pos, k);
+            hash_value = hash32(key);
+            if (hash_value < minimizer) {
+                min_pos = pos; minimizer = hash_value;
+                equal_n = 0;
+            } else if (hash_value == minimizer) {
+                equal_min_pos[equal_n++] = pos;
+            }
+        }
+        h[hi++] = ((hash_t)minimizer << 32) | min_pos;
+        for (j = 0; j < equal_n; ++j) h[hi++] = ((hash_t)minimizer << 32) | equal_min_pos[j];
+    }
+    free(equal_min_pos);
+    return hi;
 }
 
-//int minimizer_hash(int8_t *bseq, int seq_len, int k, int w) {
-//}
+typedef struct { uint32_t x, y; } u64_t;
 
-// TODO merge consecutive hits into one longer hit
+
+#define _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n) {    \
+    if (buf[i].x < minimizer.x) {   \
+        minimizer = buf[i]; \
+        min_buf_pos = i;    \
+        equal_n = 0;    \
+    } else if (buf[i].x == minimizer.x) {   \
+        equal_min_pos[equal_n++] = buf[i].y;    \
+        min_buf_pos = i;    \
+    }   \
+}
+// First w-s: |===w-s===|...
+//            |next mini|...
+// Next s:    |===w-s===|==s==|...
+//            |==s==|next mini|...
+// Next s:    |===w-s===|==s==|==s==|...
+//            |==s==|==s==|next mini|...
+int overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
+    int i, l, hi = 0;
+    int pos, *equal_min_pos = (int*)_err_malloc(w * sizeof(int)), equal_n;
+    uint32_t key; int buf_pos, min_buf_pos, last_min_buf_pos=-1;
+    u64_t buf[256], minimizer, tmp;
+
+    // first w-s
+    key = hash_key(bseq, k); minimizer.x = hash32(key); minimizer.y = (uint32_t)(k-1); buf[0] = minimizer; equal_n = 0;
+    for (pos = k, buf_pos = 1, min_buf_pos = 0; pos < k-1+w-s; ++pos) {
+        key = hash_shift_key(key, bseq, pos-1, pos, k); buf[buf_pos].x = hash32(key); buf[buf_pos].y = (uint32_t)pos;
+        _set_minimizer(minimizer, buf, buf_pos, min_buf_pos, equal_min_pos, equal_n);
+        ++buf_pos;
+    }
+    // with a minimizer(,equal_min_pos, equal_n) in first w-s, calculate general minimizer with additional s
+    // [w-s ~ w], [w ~ w+s], [w+s ~ w+2s] ...
+    for (l = 0; pos < seq_len; ++pos) {
+        key = hash_shift_key(key, bseq, pos-1, pos, k); tmp.x = hash32(key); tmp.y = (uint32_t)pos; buf[buf_pos] = tmp;
+        if (tmp.x < minimizer.x) { // new minimizer
+            if (min_buf_pos == last_min_buf_pos) // store last old minimizer
+                h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
+            minimizer = tmp; min_buf_pos = buf_pos; equal_n = 0;
+        } else if (tmp.x == minimizer.x) {
+            equal_min_pos[equal_n++] = pos; min_buf_pos = buf_pos;
+        }
+        if (++l == s) { // reach a new w
+            // collect minimizer of w-s for next w
+            if ((min_buf_pos <= buf_pos && min_buf_pos > buf_pos - w + s) || min_buf_pos > buf_pos + s) { // current minimizer is in next w
+                if (equal_n > 0) {
+                    h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
+                    for (i = 0; i < equal_n-1; ++i) h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+                    minimizer.y = equal_min_pos[equal_n-1]; equal_n = 0;
+                }
+                last_min_buf_pos = min_buf_pos;
+            } else { // out of next w
+                h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
+                for (i = 0; i < equal_n; ++i) h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+
+                int new_start = buf_pos + s + 1;
+                if (new_start < w) {
+                    minimizer = buf[new_start]; min_buf_pos = new_start; equal_n = 0;
+                    for (i = new_start+1; i < w; ++i) {
+                        _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n);
+                    }
+                    for (i = 0; i <= buf_pos; ++i) {
+                        _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n);
+                    }
+                } else {
+                    new_start -= w;
+                    minimizer = buf[new_start]; min_buf_pos = new_start; equal_n = 0;
+                    for (i = new_start+1; i <= buf_pos; ++i) {
+                        _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n);
+                    }
+                }
+                last_min_buf_pos = -1;
+            }
+            l = 0;
+        }
+        if (++buf_pos == w) buf_pos = 0;
+    }
+
+    h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
+    for (i = 0; i < equal_n; ++i) h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+
+    /*
+    for (i = 0; i < hi; ++i) {
+        printf("%d: %d\n", (uint32_t)h[i], (uint32_t)(h[i]>>32));
+    }*/
+    free(equal_min_pos);
+    return hi;
+}
+
+// non overlap, m minmimal kmers
+int min_hash(int8_t *bseq, int seq_len, int k, int s, int w, int m, int use_hpc, hash_t *h) {
+    return 0;
+}
+
+// TODO skip N(ambiguous base)
+// h: kmer-key | rightmost-pos
+int build_kmer_hash(int8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h) {
+    if (mtp->w > 1) { // do min hash
+        if (mtp->m == 1) {
+            if (mtp->s >= mtp->w) return non_overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
+            else return overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
+        } else return min_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->m, mtp->hpc, h);
+    } else { // do direct hash
+        // TODO HPC for direct-hash
+        if (mtp->k > mtp->s) return overlap_direct_hash(bseq, seq_len, mtp->k, mtp->s, h);
+        else return non_overlap_direct_hash(bseq, seq_len, mtp->k, mtp->s, h);
+    }
+}
+
 // 0. h: hash_value | position
 // 1. hash_hit1: period | end
 // 2. hit_h2: end | period | K ; K : MEM hit's length
@@ -260,10 +399,8 @@ void init_dp(hash_t *hit_h, self_dp_t **dp, int *hash_index, int *size, int tota
 // TODO diff_threshold: based on distance and error ratio
 // TODO conn_threshold: based on period and error ratio
 //
-// TODO INS/DEL connection
 // cur_score = pre_score + match_bases - gap_cost
-// gap_cost = func(delta_period)
-// static inline int get_con_score(int cur_start, int cur_end, double cur_period, int pre_start, int pre_end, double pre_period, double *period, int k, int *con_score) {
+// gap_cost = func(delta_period) from minimap2
 static inline int get_con_score(self_dp_t *cur_dp, self_dp_t *pre_dp, double *period, int k, int mem_l, int *con_score) {
     int cur_start = cur_dp->start, pre_start = pre_dp->start;
     if (cur_start <= pre_start) return 0;  // cross-linked hits
@@ -370,7 +507,7 @@ chain_t self_dp_chain(hash_t *hash_hit, int mem_hit_n, int kmer_k, self_dp_t ***
     int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, iter_n;
     int con_score, mem_l;
     int score, max_score; double con_period, max_period;
-    int max_h = 100; // TODO
+    int max_h = 100; // TODO number of iterations
     self_dp_t *cur_dp, *pre_dp;
     for (cur_i = 1; cur_i < tot_n; ++cur_i) {
         for (cur_j = 0; cur_j < array_size[cur_i]; ++cur_j) {
@@ -406,7 +543,7 @@ UPDATE:
         }
     }
 
-    // backtrack, obtain top N chains, use max-heap TODO
+    // TODO backtrack, obtain top N chains, use max-heap
     dp_score_t *score_rank = (dp_score_t*)_err_malloc(mem_hit_n * sizeof(dp_score_t));
     int score_n = sort_dp_score(dp, array_size, tot_n, score_rank);
     int top_N = 10000, ch_n;
@@ -429,7 +566,7 @@ UPDATE:
             j = 0;
             printf("\tchain: %d: start: %d, end: %d, score: %d\n", j+1, dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].end, dp[ch[i].chain[j].i][ch[i].chain[j].j].score);
             for (j = 1; j < ch[i].len; ++j) {
-                printf("\tchain: %d: start: %d, end: %d, p: %d, score: %d, delta: %d\n", j+1, dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].end, dp[ch[i].chain[j].i][ch[i].chain[j].j].end-dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].score, dp[ch[i].chain[j].i][ch[i].chain[j].j].start- dp[ch[i].chain[j-1].i][ch[i].chain[j-1].j].start);
+                printf("\tchain: %d: start: %d, end: %d, p: %d, mem_l: %d, score: %d, delta: %d\n", j+1, dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].end, dp[ch[i].chain[j].i][ch[i].chain[j].j].end-dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].mem_l, dp[ch[i].chain[j].i][ch[i].chain[j].j].score, dp[ch[i].chain[j].i][ch[i].chain[j].j].start- dp[ch[i].chain[j-1].i][ch[i].chain[j-1].j].start);
             }
         }
     }
@@ -528,21 +665,6 @@ static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, sel
     return max_id;
 }
 
-// TODO reduce time
-static inline int get_max_id(int seed_n, int8_t **hit_array, int seq_len) {
-    int i, j, hit_n, max_hit_n = 0, max_id;
-    for (i = 0; i < seed_n; ++i) {
-        hit_n = 0;
-        for (j = 0; j < seq_len; ++j) hit_n += hit_array[i][j];
-        if (hit_n > max_hit_n) {
-            max_hit_n = hit_n;
-            max_id = i;
-        }
-    }
-    printf("max_i: %d, max_hit_n: %d\n", max_id, max_hit_n); 
-    return max_id;
-}
-
 int partition_seqs(char *seq, self_dp_t **dp, int *seed_ids, int seed_n, chain_t ch, int *par_pos) {
     int i, seq_len;
 
@@ -570,16 +692,18 @@ int partition_seqs(char *seq, self_dp_t **dp, int *seed_ids, int seed_n, chain_t
 // 3. call consensus with each chain
 // 4. polish consensus result
 int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
+    if (seq_len < mtp->k) return 0;
     int8_t *bseq = (int8_t*)_err_malloc(seq_len * sizeof(int8_t));
     get_bseq(seq, seq_len, bseq);
 
     // generate hash value for each k-mer
-    hash_t *h = (hash_t*)_err_malloc(seq_len / mtp->w * sizeof(hash_t));
-    int hn = direct_hash(bseq, seq_len, mtp->k, mtp->w, h);
+    hash_t *h = (hash_t*)_err_malloc((seq_len - mtp->w) / mtp->s * mtp->m * sizeof(hash_t));
+    int hn = build_kmer_hash(bseq, seq_len, mtp, h);
+    printf("hash seed number: %d\n", hn);
     if (hn == 0) return 0;
 
-    hash_t *hit_h; int *seed_ids = (int*)_err_calloc(seq_len, sizeof(int)), seed_n;
     // collect hash hits
+    hash_t *hit_h; int *seed_ids = (int*)_err_calloc(seq_len, sizeof(int)), seed_n;
     int mem_hit_n = collect_hash_hit(h, hn, &hit_h, seed_ids, &seed_n); free(h);
 
     // dp chain
@@ -592,12 +716,15 @@ int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
     int par_n = partition_seqs(seq, dp, seed_ids, seed_n, ch, par_pos);
     char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)); 
     char *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
-    int i, seq_i = 0, start, end;
+    int i, j, seq_i = 0, start, end;
     for (i = 0; i < par_n-1; ++i) {
         if (par_pos[i] > 0 && par_pos[i+1] > 0) {
             start = par_pos[i], end = par_pos[i+1];
             seqs[seq_i] = (char*)_err_calloc((end - start + 1), sizeof(char));
-            strncpy(seqs[seq_i++], seq + start, end - start);
+            //strncpy(seqs[seq_i++], seq + start, end - start);
+            for (j = start; j < end; ++j) {
+                seqs[seq_i][j-start] = "ACGTN"[bseq[j]]; // make sure it's upper case
+            } seqs[seq_i++][end-start] = '\0';
             printf("seqs(%d:%d,%d): %s\n", end-start, start, end, seqs[seq_i-1]);
         }
     }

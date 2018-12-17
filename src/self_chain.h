@@ -23,6 +23,7 @@ typedef struct {
     int i:32, j:32;
 } cell_t;
 
+// TODO total_hits_of_kmer: used as weight of kmer
 // hash_hit1: period:32 | end:32
 #define _set_hash_hit1(start, end) ((((end)-(start)) << 32) | ((end) & _32mask))
 #define _get_hash_hit1_end(hash_hit, i) ((hash_hit)[i] & _32mask)

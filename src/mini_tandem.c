@@ -99,9 +99,9 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->detail_fp = NULL;
     mtp->k = KMER_SIZE;
     mtp->w = KMER_WSIZE;
+    mtp->s = KMER_SSIZE;
     mtp->m = KMER_MINM;
-    mtp->sigma = HIT_BKT_SIG;
-    mtp->bucket_T = HIT_BKT_SIZE;
+    mtp->hpc = 0;
     mtp->max_range = REP_RANGE;
 
     return mtp;

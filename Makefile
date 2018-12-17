@@ -2,7 +2,7 @@ CC      =	gcc
 CPP		=   g++
 CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 CPPFLAGS=   -std=c++11
-DFLAGS  =	-g -Wall -pg
+DFLAGS  =	-g -Wall #-pg
 #MINIMAP2_DIR = ./minimap2
 #MINMAP2LIB  =   $(MINIMAP2_DIR)/libminimap2.a
 #PYLIB   =   -lpython2.7
