@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 {
     mini_tandem_para *mtp = mini_tandem_init_para();
     int c;
-    while ((c = getopt_long(argc, argv, "k:w:m:p:s:r:d:t:",mini_tandem_opt, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "k:w:m:ps:r:d:t:",mini_tandem_opt, NULL)) >= 0) {
         switch(c)
         {
             case 'k': mtp->k = atoi(optarg); break;

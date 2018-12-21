@@ -39,8 +39,9 @@ OBJS    += $(EDLIB)
 
 BIN     =	$(BIN_DIR)/miniTandem
 
-GDB_DEBUG   =   $(BIN_DIR)/gdb_miniTandem
-DMARCRO 	=	-D __DEBUG__
+GDB_DEBUG   = $(BIN_DIR)/gdb_miniTandem
+DMARCRO 	= -D __DEBUG__
+ALL_HIT     = -D __ALL_HIT__ 
 
 # dependencies
 .c.o:
@@ -84,6 +85,8 @@ clean:
 
 clean_debug:
 	rm -f $(GDB_DEBUG)
+
+
 
 $(SRC_DIR)/seq.o: $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
 $(SRC_DIR)/self_chain.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h 
