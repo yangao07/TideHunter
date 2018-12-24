@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <math.h>
 #include "mini_tandem.h"
 #include "self_chain.h"
 #include "utils.h"
@@ -102,6 +103,8 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->s = KMER_SSIZE;
     mtp->m = KMER_MINM;
     mtp->hpc = 0;
+    mtp->max_div = MAX_DIV;
+    mtp->div_exp = exp(mtp->k * MAX_DIV);
     mtp->max_range = REP_RANGE;
 
     return mtp;

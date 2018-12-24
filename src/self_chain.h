@@ -59,13 +59,12 @@ typedef struct {
 
 typedef struct {
     int from_i, from_j; // i : index of end postion, j : index of hit of end
-    int start, end, mem_l;
-    double period; int score;
+    int start, end, mem_l; int score;
     int8_t is_tracked;
-} self_dp_t;
+} dp_t;
 
 typedef struct {
-    cell_t *chain;
+    cell_t *cell;
     int len;
 } chain_t;
 

@@ -3,6 +3,7 @@
 
 typedef struct {
     int k, w, s, m, hpc; // k-mer length, window size, selected minimum m hash values
+    double max_div, div_exp; // max allowed divergence
                  // keep all k-mer when w == m
     int max_range; // max range to find tandem repeat, -1 for no limit
     FILE *detail_fp; //char detail_out[1024];
@@ -12,11 +13,12 @@ typedef struct {
 #define THREAD_N 4
 #define CHUNK_READ_N 10000
 
-#define KMER_SIZE 8
-#define KMER_WSIZE 1
-#define KMER_SSIZE 1
-#define KMER_MINM 1 // 1: minimizer
-#define REP_RANGE -1
+#define KMER_SIZE 8  // kmer length
+#define KMER_WSIZE 1 // window size
+#define KMER_SSIZE 1 // step size
+#define KMER_MINM 1  // 1: minimizer
+#define REP_RANGE -1 // -1: unlimited
+#define MAX_DIV 0.20 // 0.25
 
 
 int mini_tandem(const char *read_fn, mini_tandem_para *mtp);

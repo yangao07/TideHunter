@@ -25,7 +25,7 @@ static inline uint32_t inv_hash32(uint32_t key)
     return key;
 }
 
-static inline uint64_t hash64(uint64_t key, uint64_t mask)
+static inline uint64_t inv_hash64(uint64_t key, uint64_t mask)
 {
 	key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
 	key = key ^ key >> 24;
@@ -52,7 +52,7 @@ static inline int ilog2_32(uint32_t v)
 }
 
 // hash: kmer-key | rightmost-pos
-int non_overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
+int direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h, int *cu_kmer_m) {
     int c, l, hi=0, pos, key;
     uint32_t mask = (1 << 2*k) - 1;
 
@@ -63,22 +63,27 @@ int non_overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, int use_hpc
 
         if (++l == k) { // get a kmer
             key &= mask; h[hi++] = ((hash_t)key << 32) | pos;
-            l = 0;
-            // skip s-k bps
-            if (use_hpc) {
-                while (l < s-k) {
-                    while (pos + 1 < seq_len && bseq[pos+1] == bseq[pos]) ++pos;
-                    ++l; ++pos;
-                }
+            cu_kmer_m[pos] = hi;
+            if (s > k) {
                 l = 0;
-            } else pos += (s-k);
+                // skip s-k bps
+                if (use_hpc) {
+                    while (l < s-k) {
+                        while (pos + 1 < seq_len && bseq[pos+1] == bseq[pos]) ++pos;
+                        ++l; ++pos;
+                    }
+                    l = 0;
+                } else pos += (s-k);
+            } else l = k-s;
         }
     }
-    for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+#ifdef __DEBUG__
+    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+#endif
     return hi;
 }
 
-int overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
+int overlap_direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
     int c, l, hi=0, pos; 
     uint32_t key, mask = (1 << 2*k) - 1;
 
@@ -92,7 +97,9 @@ int overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, int use_hpc, ha
             l = k-s;
         }
     }
-    for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+#ifdef __DEBUG__
+    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+#endif
     return hi;
 }
 
@@ -105,8 +112,8 @@ int overlap_direct_hash(int8_t *bseq, int seq_len, int k, int s, int use_hpc, ha
 // use_hpc: use homopolymer-compressed kmer
 // h:       kmer-key | rightmost-pos
 // non_overlap: no need to use buffer to store previous kmer hash values
-int non_overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
-    int c, l, i, j, pos, min_pos, hi=0;
+int non_overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h, int *cu_kmer_m) {
+    int c, l, j, pos, min_pos, hi=0;
     uint32_t key, minimizer, hash_value, mask = (1 << 2*k) - 1;
     int *equal_min_pos = (int*)_err_malloc(w * sizeof(int)), equal_n;
 
@@ -125,7 +132,11 @@ int non_overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, i
             }
             if (l == k+w-1) { // reach a w
                 h[hi++] = ((hash_t)minimizer << 32) | min_pos;
-                for (j = 0; j < equal_n; ++j) h[hi++] = ((hash_t)minimizer << 32) | equal_min_pos[j];
+                cu_kmer_m[min_pos] = hi;
+                for (j = 0; j < equal_n; ++j) { 
+                    h[hi++] = ((hash_t)minimizer << 32) | equal_min_pos[j];
+                    cu_kmer_m[equal_min_pos[j]] = hi;
+                }
 
                 if (s >= l) { // total non-overlap
                     // skip s-l bps
@@ -142,7 +153,9 @@ int non_overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, i
         }
     }
 
-    for (i = 0; i < hi; ++i) printf("%u: %u\n", (uint32_t)h[i], (uint32_t)(h[i]>>32));
+#ifdef __DEBUG__
+    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+#endif
     free(equal_min_pos);
     return hi;
 }
@@ -164,7 +177,7 @@ typedef struct { uint32_t x, y; } u64_t;
 //            |==s==|next mini|...
 // Next s:    |===w-s===|==s==|==s==|...
 //            |==s==|==s==|next mini|...
-int overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
+int overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h, int *cu_kmer_m) {
     int i, l, c, hi = 0;
     int pos, buf_pos, min_buf_pos, last_min_buf_pos=-1, equal_n, *equal_min_pos = (int*)_err_malloc(w * sizeof(int));
     uint32_t key, mask = (1 << 2*k) - 1; 
@@ -195,9 +208,10 @@ int overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int u
         key = (key << 2 | c) & mask; tmp.x = inv_hash32(key); tmp.y = (uint32_t)pos; buf[buf_pos] = tmp;
 
         if (tmp.x < minimizer.x) { // new minimizer
-            if (min_buf_pos == last_min_buf_pos) // store last old minimizer
+            if (min_buf_pos == last_min_buf_pos) {// store last old minimizer
                 h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-            minimizer = tmp; min_buf_pos = buf_pos; equal_n = 0;
+                cu_kmer_m[minimizer.y] = hi;
+            } minimizer = tmp; min_buf_pos = buf_pos; equal_n = 0;
         } else if (tmp.x == minimizer.x) {
             equal_min_pos[equal_n++] = pos; min_buf_pos = buf_pos;
         }
@@ -206,13 +220,21 @@ int overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int u
             if ((min_buf_pos <= buf_pos && min_buf_pos > buf_pos - w + s) || min_buf_pos > buf_pos + s) { // current minimizer is in next w
                 if (equal_n > 0) {
                     h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-                    for (i = 0; i < equal_n-1; ++i) h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+                    cu_kmer_m[minimizer.y] = hi;
+                    for (i = 0; i < equal_n-1; ++i) {
+                        h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+                        cu_kmer_m[minimizer.y] = hi;
+                    }
                     minimizer.y = equal_min_pos[equal_n-1]; equal_n = 0;
                 }
                 last_min_buf_pos = min_buf_pos;
             } else { // out of next w
                 h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-                for (i = 0; i < equal_n; ++i) h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+                cu_kmer_m[minimizer.y] = hi;
+                for (i = 0; i < equal_n; ++i) {
+                    h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+                    cu_kmer_m[equal_min_pos[i]] = hi;
+                }
 
                 int new_start = buf_pos + s + 1;
                 if (new_start < w) {
@@ -238,30 +260,35 @@ int overlap_minimizer_hash(int8_t *bseq, int seq_len, int k, int s, int w, int u
     }
 
     h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-    for (i = 0; i < equal_n; ++i) h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+    cu_kmer_m[minimizer.y] = hi;
+    for (i = 0; i < equal_n; ++i) { 
+        h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
+        cu_kmer_m[equal_min_pos[i]] = hi;
+    }
 
-    for (i = 0; i < hi; ++i) printf("%u: %u\n", (uint32_t)h[i], (uint32_t)(h[i]>>32));
+#ifdef __DEBUG__
+    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+#endif
     free(equal_min_pos);
     return hi;
 }
 
 // TODO non overlap, m minmimal kmers
 // m:       collect m minimal kmers (m<w, m==1 for minimizer_hash)
-int min_hash(int8_t *bseq, int seq_len, int k, int s, int w, int m, int use_hpc, hash_t *h) {
+int min_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int m, int use_hpc, hash_t *h) {
     return 0;
 }
 
 // TODO skip N(ambiguous base)
 // h: kmer-key | rightmost-pos
-int build_kmer_hash(int8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h) {
+int build_kmer_hash(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h, int *cu_kmer_m) {
     if (mtp->w > 1) { // do min hash
         if (mtp->m == 1) {
-            if (mtp->s >= mtp->w) return non_overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
-            else return overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
+            if (mtp->s >= mtp->w) return non_overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h, cu_kmer_m);
+            else return overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h, cu_kmer_m);
         } else return min_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->m, mtp->hpc, h);
     } else { // do direct hash
-        if (mtp->k > mtp->s) return overlap_direct_hash(bseq, seq_len, mtp->k, mtp->s, mtp->hpc, h);
-        else return non_overlap_direct_hash(bseq, seq_len, mtp->k, mtp->s, mtp->hpc, h);
+        return direct_hash(bseq, seq_len, mtp->k, mtp->s, mtp->hpc, h, cu_kmer_m);
     }
 }
 
@@ -270,6 +297,7 @@ int build_kmer_hash(int8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h)
 // 1. hash_hit1: period | end
 // 2. hit_h2: end | period | K ; K : MEM hit's length
 // 3. seed_ids[hit_end] = seed_id
+// TODO collect cumulative kmer and hits number for each pos
 int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *seed_n) {
     radix_sort_hash(h, h + hn); // sort h by hash values
 
@@ -308,6 +336,7 @@ int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *s
                     hash_hit1[hi] = _set_hash_hit1(h[start_i+j-1], h[start_i+j]);
                     ++hi;
                     seed_ids[h[start_i+j] & _32mask] = *seed_n;
+                    // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
 #endif
                 }
                 ++(*seed_n);
@@ -325,6 +354,8 @@ int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *s
 #else
             hash_hit1[hi] = _set_hash_hit1(h[start_i+j-1], h[start_i+j]);
             ++hi;
+            seed_ids[h[start_i+j] & _32mask] = *seed_n;
+            // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
 #endif
         }
         ++(*seed_n);
@@ -349,6 +380,7 @@ int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *s
 
     *hash_hit = (hash_t*)_err_malloc(mem_hit_n * sizeof(hash_t));
     for (hi = 0, i = 1, n = 0; i < hit_n; ++i) {
+        // TODO mem dis > 1
         if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (_get_hash_hit1_end(hash_hit1, i) != _get_hash_hit1_end(hash_hit1, i-1)+1)) {         
             (*hash_hit)[hi++] = _set_hash_hit2(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
             n = 0;
@@ -366,41 +398,12 @@ int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *s
     return mem_hit_n;
 }
 
-int overlap_rep_reg(int s1, int e1, int s2, int e2) {
-    if (e1 < s2 || e2 < s1) return 0;
-    else return 1;
-}
-
-int reg_cmp(const void *a, const void *b) {
-    return ((rep_reg_t*)a)->start - ((rep_reg_t*)b)->start;
-}
-
-int int_cmp(const void *a, const void *b) {
-    return *(int*)a - *(int*)b;
-}
-
-int sort_rep_reg(rep_reg_t **rr, int *rr_n) {
-    qsort(*rr, *rr_n, sizeof(rep_reg_t), reg_cmp);
-    int i, cur_i;
-    for (i=1, cur_i=0; i < *rr_n; ++i) {
-        if (overlap_rep_reg((*rr)[cur_i].start, (*rr)[cur_i].end, (*rr)[i].start, (*rr)[i].end)) {
-            (*rr)[cur_i].start = MIN_OF_TWO((*rr)[cur_i].start, (*rr)[i].start);
-            (*rr)[cur_i].end = MAX_OF_TWO((*rr)[cur_i].end, (*rr)[i].end);
-            (*rr)[i].start = -1;
-            (*rr)[i].end = -1;
-        } else {
-            cur_i = i;
-        }
-    }
-    return 0;
-}
-
 int dp_score_cmp(const void *a, const void *b) {
-    return (((dp_score_t*)a)->score < ((dp_score_t*)b)->score ? 1 : -1);
+    return (((dp_score_t*)b)->score - ((dp_score_t*)a)->score);
 }
 
 // TODO use heap to only keep top N scores
-int sort_dp_score(self_dp_t **dp, int *array_size, int tot_n, dp_score_t *score_rank) { 
+int sort_dp_score(dp_t **dp, int *array_size, int tot_n, dp_score_t *score_rank) { 
     int i, j, k;
     k = 0;
     for (i = tot_n-1; i >= 0; --i) {
@@ -416,21 +419,30 @@ int sort_dp_score(self_dp_t **dp, int *array_size, int tot_n, dp_score_t *score_
 void reverse_chain(chain_t *ch) {
     int i, tmp_i, tmp_j;
     for (i = 0; i < ch->len >> 1; ++i) {
-        tmp_i = ch->chain[i].i, tmp_j = ch->chain[i].j;
-        ch->chain[i].i = ch->chain[ch->len-1-i].i, ch->chain[i].j = ch->chain[ch->len-1-i].j; 
-        ch->chain[ch->len-1-i].i = tmp_i, ch->chain[ch->len-1-i].j = tmp_j; 
+        tmp_i = ch->cell[i].i, tmp_j = ch->cell[i].j;
+        ch->cell[i].i = ch->cell[ch->len-1-i].i, ch->cell[i].j = ch->cell[ch->len-1-i].j; 
+        ch->cell[ch->len-1-i].i = tmp_i, ch->cell[ch->len-1-i].j = tmp_j; 
     }
 }
 
+static inline void set_cur_hit_n(dp_t **dp, chain_t *ch, int *cu_hit_n, int seq_len) {
+    int i, j, cu_n;
+
+    for (j = 0; j < dp[ch->cell[0].i][ch->cell[0].j].end; ++j) cu_hit_n[j] = 0;
+    for (i = cu_n = 1; i < ch->len; ++i) {
+        for (j = dp[ch->cell[i-1].i][ch->cell[i-1].j].end; j < dp[ch->cell[i].i][ch->cell[i].j].end; ++j) cu_hit_n[j] = cu_n;
+        ++cu_n;
+    }
+    for (; j < seq_len; ++j) cu_hit_n[j] = cu_n;
+}
+
 // backtrack from (x, y)
-void backtrack_dp(self_dp_t **dp, int tot_n, int x, int y, chain_t *_ch, int *ch_n) {
-    int cur_i = x, cur_j = y;
-    int pre_i, pre_j;
-    chain_t *ch = _ch + *ch_n; int chain_len = 0;
+int backtrack_dp(dp_t **dp, int tot_n, int x, int y, chain_t *ch, int *cu_hit_n, int seq_len) {
+    int cur_i = x, cur_j = y, pre_i, pre_j, chain_len = 0;
     while (1) {
         // chain_add_hit(cur_i, cur_j);
         dp[cur_i][cur_j].is_tracked = 1;
-        ch->chain[chain_len++] = (cell_t){cur_i, cur_j};
+        ch->cell[chain_len++] = (cell_t){cur_i, cur_j};
 
         pre_i = dp[cur_i][cur_j].from_i;
         pre_j = dp[cur_i][cur_j].from_j;
@@ -441,12 +453,14 @@ void backtrack_dp(self_dp_t **dp, int tot_n, int x, int y, chain_t *_ch, int *ch
     if (chain_len > 1) {
         ch->len = chain_len;
         reverse_chain(ch);
-        ++(*ch_n);
-    }
+        // set cu_hit_n
+        set_cur_hit_n(dp, ch, cu_hit_n, seq_len);
+        return 1;
+    } else return 0;
 }
 
-void init_dp(hash_t *hit_h, self_dp_t **dp, int *hash_index, int *size, int total_n, int k) {
-    dp[total_n][0] = (self_dp_t){-1, -1, 0, 0, 0, 0.0, 0, 0};
+void init_dp(hash_t *hit_h, dp_t **dp, int *hash_index, int *size, int total_n, int k) {
+    dp[total_n][0] = (dp_t){-1, -1, 0, 0, 0, 0, 0};
     int i, j, hash_i;
     int start, end, period, mem_l;
     for (i = 0; i < total_n; ++i) {
@@ -456,7 +470,8 @@ void init_dp(hash_t *hit_h, self_dp_t **dp, int *hash_index, int *size, int tota
             period = _get_hash_hit2_period(hit_h, hash_i);
             mem_l = _get_hash_hit2_meml(hit_h, hash_i);
             start = end - period;
-            dp[i][j] = (self_dp_t){total_n, 0, start, end, mem_l, (double)(period), k+mem_l+0, 0};
+            dp[i][j] = (dp_t){total_n, 0, start, end, mem_l, k+mem_l+0, 0};
+            // printf("start: %d, end: %d\n", start, end);
         }
     }
 }
@@ -466,12 +481,12 @@ void init_dp(hash_t *hit_h, self_dp_t **dp, int *hash_index, int *size, int tota
 //
 // cur_score = pre_score + match_bases - gap_cost
 // gap_cost = func(delta_period) from minimap2
-static inline int get_con_score(self_dp_t *cur_dp, self_dp_t *pre_dp, double *period, int k, int mem_l, int *con_score) {
+static inline int get_con_score(dp_t *cur_dp, dp_t *pre_dp, int k, int mem_l, int *con_score) {
     int cur_start = cur_dp->start, pre_start = pre_dp->start;
     if (cur_start <= pre_start) return 0;  // cross-linked hits
 
     int cur_end = cur_dp->end, pre_end = pre_dp->end;
-    double cur_period = cur_dp->period, pre_period = pre_dp->period;
+    // double cur_period = cur_dp->period, pre_period = pre_dp->period;
     // TODO disconnect distance
     // G is based on (period, error-rate, k, w)
     // int G = 100;
@@ -481,12 +496,12 @@ static inline int get_con_score(self_dp_t *cur_dp, self_dp_t *pre_dp, double *pe
     int delta_period = abs((cur_start - pre_start) - (cur_end - pre_end));
     int log_d = delta_period ? ilog2_32(delta_period) : 0;
     int gap_cost = (int)(.01 * delta_period * k) + (log_d >> 1);
-    *period = cur_period;
+    // *period = cur_period;
 
     *con_score = matched_bases - gap_cost;
     return 1;
 
-    double f = cur_period / pre_period;
+    /* double f = cur_period / pre_period;
     double s = (double)(MIN_OF_TWO(cur_end - pre_end, k));
     int embed = (cur_start <= pre_start);
 
@@ -504,20 +519,51 @@ static inline int get_con_score(self_dp_t *cur_dp, self_dp_t *pre_dp, double *pe
         *period = cur_period;
         s = 0;
     }
-    return s;
+    return s; */
 }
 
+
+int is_in_chain(dp_t **dp, chain_t *ch, int ch_n, int cell_i, int cell_j) {
+    int i, j, cell_start = dp[cell_i][0].start, cell_end = dp[cell_i][cell_j].end;
+    for (i = 0; i < ch_n; ++i) {
+        int chain_start = dp[ch[i].cell[0].i][ch[i].cell[0].j].start, chain_end = dp[ch[i].cell[ch[i].len-1].i][ch[i].cell[ch[i].len-1].j].end;
+        for (j = ch[i].len-1; j > 0; --j) {
+            if (chain_end < cell_start) break;
+            else if (chain_start <= cell_end && cell_start <= chain_end) return 1;
+        }
+    }
+    return 0;
+}
 // a hit should be considered as random-hit and removed:
 // if the chain becomes two disconnected chains when the hit is removed
-int remove_alone_hit(self_dp_t **dp, chain_t ch) {
-    if (ch.len < 3) return 0;
+// TODO calculate expected n for 20%-divergence, compare observed n with estimated n
+int split_chain(dp_t **dp, chain_t *ch, mini_tandem_para *mtp, int *cu_kmer_m, int *cu_hit_n) {
+    int i, start, end, est_n, n, m, k = mtp->k, w=mtp->w;
+    dp_t dp_cell;
+    for (i = 0; i < ch->len; ++i) {
+        dp_cell = dp[ch->cell[i].i][ch->cell[i].j];
+        start = dp_cell.start; end = dp_cell.end;
+        n = cu_hit_n[end]-cu_hit_n[start]+1, m = cu_kmer_m[end]-cu_kmer_m[start]+1;
+        // without w*w
+        printf("Poisson-split (%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1/(1.0*k) * log((m+0.0)/(n)));
+        printf("Binomial-split(%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1.0 - pow((n+0.0)/(m), 1/(1.0*k)));
+        est_n = (int)(m / mtp->div_exp);
+
+        if (n < est_n) { // too sparse
+            // split into two chains
+            printf("remove: (%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1.0 - pow((n+0.0)/(m), 1/(1.0*k)));
+        }
+    }
+
+    /*
+    if (ch->len < 3) return 0;
     int i;
-    int pre_i = ch.chain[0].i, pre_j = ch.chain[0].j; int pre_end = dp[pre_i][pre_j].end;
-    int cur_i = ch.chain[1].i, cur_j = ch.chain[1].j; int cur_end = dp[cur_i][cur_j].end;
+    int pre_i = ch->cell[0].i, pre_j = ch->cell[0].j; int pre_end = dp[pre_i][pre_j].end;
+    int cur_i = ch->cell[1].i, cur_j = ch->cell[1].j; int cur_end = dp[cur_i][cur_j].end;
     int next_i, next_j, next_end, next_start;
     // double cur_p;
-    for (i = 1; i < ch.len-1; ++i) {
-        next_i = ch.chain[i+1].i, next_j = ch.chain[i+1].j;
+    for (i = 1; i < ch->len-1; ++i) {
+        next_i = ch->cell[i+1].i, next_j = ch->cell[i+1].j;
         next_end = dp[next_i][next_j].end;
         next_start = dp[next_i][next_j].start;
 
@@ -525,23 +571,22 @@ int remove_alone_hit(self_dp_t **dp, chain_t ch) {
         if (next_start > pre_end) {
         // if ((double)(next_end - pre_end) > cur_p) {
             printf("remove: %d, %d\n", cur_end, cur_end - dp[cur_i][cur_j].start);
-            ch.chain[i].i = -1;
+            ch->cell[i].i = -1;
         }
 
         pre_end = cur_end; cur_end = next_end;
         cur_i = next_i; cur_j = next_j;
-    }
+    }*/
 
     return 0;
 }
 
 // hash_hit: hash table of mem hits
 // TODO allocate DP matrix uniformly
-chain_t self_dp_chain(hash_t *hash_hit, int mem_hit_n, int kmer_k, self_dp_t ***_dp, int *tot_N) {
-    int i, j, k, idx;
+int dp_chain(hash_t *hash_hit, int mem_hit_n, int seq_len, mini_tandem_para *mtp, dp_t ***_dp, int *tot_N, int *cu_kmer_m, chain_t **chain, int *ch_m) {
+    int i, j, k, idx, kmer_k = mtp->k;
     // calculate DP matrix size, allocate DP matrix
-    int tot_n = 1, *array_size;
-    int *hash_index;
+    int tot_n = 1, *array_size, *hash_index;
     for (i = 1; i < mem_hit_n; ++i) {
         if (_get_hash_hit2_end(hash_hit, i)  != _get_hash_hit2_end(hash_hit, i-1))
             tot_n += 1;
@@ -549,19 +594,19 @@ chain_t self_dp_chain(hash_t *hash_hit, int mem_hit_n, int kmer_k, self_dp_t ***
     *tot_N = tot_n;
     array_size = (int*)_err_malloc(sizeof(int) * tot_n);
     hash_index = (int*)_err_malloc(sizeof(int) * tot_n);
-    *_dp = (self_dp_t**)_err_calloc((tot_n+1), sizeof(self_dp_t*));
-    self_dp_t **dp = *_dp;
-    dp[tot_n] = (self_dp_t*)_err_calloc(1, sizeof(self_dp_t));
+    *_dp = (dp_t**)_err_calloc((tot_n+1), sizeof(dp_t*));
+    dp_t **dp = *_dp;
+    dp[tot_n] = (dp_t*)_err_calloc(1, sizeof(dp_t));
 
     for (i = 1, j = 0, k = 1, idx = 0; i < mem_hit_n; ++i) {
         if (_get_hash_hit2_end(hash_hit, i)  != _get_hash_hit2_end(hash_hit, i-1)) {
-            dp[j] = (self_dp_t*)_err_calloc(k, sizeof(self_dp_t));
+            dp[j] = (dp_t*)_err_calloc(k, sizeof(dp_t));
             hash_index[j] = idx-k+1; array_size[j++] = k;
             k = 1;
         } else ++k;
         ++idx;
     }
-    dp[j] = (self_dp_t*)_err_calloc(k, sizeof(self_dp_t));
+    dp[j] = (dp_t*)_err_calloc(k, sizeof(dp_t));
     hash_index[j] = idx-k; array_size[j] = k;
 
     // initialize DP matrix
@@ -569,11 +614,9 @@ chain_t self_dp_chain(hash_t *hash_hit, int mem_hit_n, int kmer_k, self_dp_t ***
     init_dp(hash_hit, dp, hash_index, array_size, tot_n, kmer_k);
 
     // main DP process
-    int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, iter_n;
-    int con_score, mem_l;
-    int score, max_score; double con_period, max_period;
-    int max_h = 100; // TODO number of iterations
-    self_dp_t *cur_dp, *pre_dp;
+    int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, con_score, mem_l, score, max_score; 
+    int iter_n, max_h = 100; // TODO number of iterations
+    dp_t *cur_dp, *pre_dp;
     for (cur_i = 1; cur_i < tot_n; ++cur_i) {
         for (cur_j = 0; cur_j < array_size[cur_i]; ++cur_j) {
             cur_dp = dp[cur_i]+cur_j;
@@ -584,13 +627,10 @@ chain_t self_dp_chain(hash_t *hash_hit, int mem_hit_n, int kmer_k, self_dp_t ***
                 if (dp[pre_i][0].end < cur_dp->start) goto UPDATE;
                 for (pre_j = 0; pre_j < array_size[pre_i]; ++pre_j) {
                     pre_dp = dp[pre_i]+pre_j;
-
-                    if (get_con_score(cur_dp, pre_dp, &con_period, kmer_k, mem_l, &con_score) == 0) continue;
+                    if (get_con_score(cur_dp, pre_dp, kmer_k, mem_l, &con_score) == 0) continue;
                     score = dp[pre_i][pre_j].score + con_score;
                     if (score > max_score) {
-                        max_score = score;
-                        max_pre_i = pre_i, max_pre_j = pre_j;
-                        max_period = con_period;
+                        max_score = score; max_pre_i = pre_i, max_pre_j = pre_j;
                         iter_n = 0;
                         // if (fabs(con_period - (dp[cur_i][cur_j].end - dp[cur_i][cur_j].start)) == 0) goto UPDATE;
                     } else if (max_score > 0) ++iter_n;
@@ -600,10 +640,7 @@ chain_t self_dp_chain(hash_t *hash_hit, int mem_hit_n, int kmer_k, self_dp_t ***
             }
 UPDATE:
             if (max_score > cur_dp->score) {
-                cur_dp->from_i = max_pre_i;
-                cur_dp->from_j = max_pre_j;
-                cur_dp->period = max_period;
-                cur_dp->score = max_score;
+                cur_dp->score = max_score; cur_dp->from_i = max_pre_i; cur_dp->from_j = max_pre_j;
             }
         }
     }
@@ -611,65 +648,72 @@ UPDATE:
     // TODO backtrack, obtain top N chains, use max-heap
     dp_score_t *score_rank = (dp_score_t*)_err_malloc(mem_hit_n * sizeof(dp_score_t));
     int score_n = sort_dp_score(dp, array_size, tot_n, score_rank);
-    int top_N = 10000, ch_n;
-    chain_t *ch = (chain_t*)_err_malloc(top_N * sizeof(chain_t));
+    int top_N = 1000, ch_n; *ch_m = top_N;
+    int **cu_hit_n = (int**)_err_malloc(top_N * sizeof(int*));
+    *chain = (chain_t*)_err_malloc(top_N * sizeof(chain_t));
     for (i = 0; i < top_N; ++i) {
-        ch[i].chain = (cell_t*)_err_malloc(tot_n * sizeof(cell_t));
-        ch[i].len = 0;
+        (*chain)[i].cell = (cell_t*)_err_malloc(tot_n * sizeof(cell_t)); (*chain)[i].len = 0;
+        cu_hit_n[i] = (int*)_err_calloc(seq_len, sizeof(int));
     }
-    i = 0, ch_n = 0;
-    while (i < score_n && ch_n < top_N) {
-        backtrack_dp(dp, tot_n, score_rank[i].i, score_rank[i].j, ch, &ch_n);
-        ++i;
+    for (i = ch_n = 0; i < score_n && ch_n < top_N; ++i) {
+        if (is_in_chain(dp, (*chain), ch_n, score_rank[i].i, score_rank[i].j)) continue;
+        if (backtrack_dp(dp, tot_n, score_rank[i].i, score_rank[i].j, (*chain)+ch_n, cu_hit_n[ch_n], seq_len)) ++ch_n;
     }
 #ifdef __DEBUG__
+    printf("ch_n: %d\n", ch_n);
+    chain_t *ch = *chain;
     for (i = 0; i < ch_n; ++i) {
         if (ch[i].len > 0) {
-            int start_i = ch[i].chain[0].i, start_j = ch[i].chain[0].j, end_i = ch[i].chain[ch[i].len-1].i, end_j = ch[i].chain[ch[i].len-1].j;
+            int start_i = ch[i].cell[0].i, start_j = ch[i].cell[0].j, end_i = ch[i].cell[ch[i].len-1].i, end_j = ch[i].cell[ch[i].len-1].j;
             int from_i = dp[start_i][start_j].from_i, from_j = dp[start_i][start_j].from_j;
-            printf("%d: score: %d(pre: %d), score_density: %lf, hit_density: %lf, len: %d (%d,%lf,%d) -> (%d,%lf,%d)\n", i+1, dp[end_i][end_j].score, dp[from_i][from_j].score, (dp[end_i][end_j].score-dp[from_i][from_j].score+0.0)/(dp[end_i][end_j].end-dp[start_i][start_j].start), (ch[i].len+0.0)/(dp[end_i][end_j].end-dp[start_i][start_j].start), ch[i].len, dp[start_i][start_j].start,  dp[start_i][start_j].period, dp[start_i][start_j].end-dp[start_i][start_j].start,  dp[end_i][end_j].end, dp[end_i][end_j].period, dp[end_i][end_j].end-dp[end_i][end_j].start);
+            printf("%d: score: %d(pre: %d), score_density: %lf, hit_density: %lf, len: %d (%d,%d,%d) -> (%d,%d,%d)\n", i+1, dp[end_i][end_j].score, dp[from_i][from_j].score, (dp[end_i][end_j].score-dp[from_i][from_j].score+0.0)/(dp[end_i][end_j].end-dp[start_i][start_j].start), (ch[i].len+0.0)/(dp[end_i][end_j].end-dp[start_i][start_j].start), ch[i].len, dp[start_i][start_j].start,  dp[start_i][start_j].end-dp[start_i][start_j].start, dp[start_i][start_j].end-dp[start_i][start_j].start,  dp[end_i][end_j].end, dp[end_i][end_j].end-dp[end_i][end_j].start, dp[end_i][end_j].end-dp[end_i][end_j].start);
             j = 0;
-            printf("\tchain: %d: start: %d, end: %d, score: %d\n", j+1, dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].end, dp[ch[i].chain[j].i][ch[i].chain[j].j].score);
+            printf("\tchain: %d(%d): start: %d, end: %d, p: %d, mem_l: %d, score: %d\n", j+1, ch[i].cell[j].i, dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].end, dp[ch[i].cell[j].i][ch[i].cell[j].j].end-dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].mem_l, dp[ch[i].cell[j].i][ch[i].cell[j].j].score);
             for (j = 1; j < ch[i].len; ++j) {
-                printf("\tchain: %d: start: %d, end: %d, p: %d, mem_l: %d, score: %d, delta: %d\n", j+1, dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].end, dp[ch[i].chain[j].i][ch[i].chain[j].j].end-dp[ch[i].chain[j].i][ch[i].chain[j].j].start, dp[ch[i].chain[j].i][ch[i].chain[j].j].mem_l, dp[ch[i].chain[j].i][ch[i].chain[j].j].score, dp[ch[i].chain[j].i][ch[i].chain[j].j].start- dp[ch[i].chain[j-1].i][ch[i].chain[j-1].j].start);
+                printf("\tchain: %d(%d): start: %d, end: %d, p: %d, mem_l: %d, score: %d, delta: %d\n", j+1, ch[i].cell[j].i, dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].end, dp[ch[i].cell[j].i][ch[i].cell[j].j].end-dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].mem_l, dp[ch[i].cell[j].i][ch[i].cell[j].j].score, dp[ch[i].cell[j].i][ch[i].cell[j].j].start- dp[ch[i].cell[j-1].i][ch[i].cell[j-1].j].start);
             }
         }
     }
 #endif
 
+    for (i = 0; i < seq_len; ++i) {
+        printf("kmer_hit(%d): %d, %d\n", i, cu_kmer_m[i], cu_hit_n[0][i]);
+    }
     // post-process of N chains
     // 1. remove stand-alone hit
-    ch_n = 1;
     for (i = 0; i < ch_n; ++i) {
-        remove_alone_hit(dp, ch[i]);
+        split_chain(dp, (*chain)+i, mtp, cu_kmer_m, cu_hit_n[i]);
     }
     // 2. merge into larger chain that contains INS/DEL
 
+    /*
     chain_t ret_ch; int select_i = 0;
-    // ret_ch.len = ch[select_i].len;
-    ret_ch.chain = (cell_t*)_err_malloc(ch[select_i].len * sizeof(cell_t));
+    ret_ch.cell = (cell_t*)_err_malloc((*chain)[select_i].len * sizeof(cell_t));
     ret_ch.len = 0;
-    for (i = 0; i < ch[select_i].len; ++i) {
-        if (ch[select_i].chain[i].i < 0) break; // TODO break into multiple chains
-        ret_ch.chain[i].i = ch[select_i].chain[i].i;
-        ret_ch.chain[i].j = ch[select_i].chain[i].j;
+    for (i = 0; i < (*chain)[select_i].len; ++i) {
+        if ((*chain)[select_i].cell[i].i < 0) break; // TODO break into multiple chains
+        ret_ch.cell[i].i = (*chain)[select_i].cell[i].i;
+        ret_ch.cell[i].j = (*chain)[select_i].cell[i].j;
         ++(ret_ch.len);
-    }
+    }*/
 
-    // for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
-    free(array_size); free(hash_index);
-    for (i = 0; i < top_N; ++i) free(ch[i].chain); free(ch); free(score_rank);
-    return ret_ch;
+    for (i = 0; i < top_N; ++i) free(cu_hit_n[i]); free(cu_hit_n);
+    free(array_size); free(hash_index); free(score_rank);
+    return ch_n;
 }
 
+// TODO HPC kmer length
 // TODO multi-hits in one period
 // TODO pos: 1-base or 0-base???
-int partition_seqs_core(char *seq, int8_t *hit_array, double period, int *par_pos) {
+// TODO left- and right-search of max-hit query
+int partition_seqs_core(char *seq, int8_t *hit_array, int period, int *par_pos) {
     int i, j, seq_len = strlen(seq);
     int *pos_array = (int*)_err_malloc(sizeof(int) * seq_len);
     int hit_n = 0;
     for (i = 0; i < seq_len; ++i) {
-        if (hit_array[i]) pos_array[hit_n++] = i;
+        if (hit_array[i]) {
+            pos_array[hit_n++] = i;
+        }
     }
     // partition seq into period seperated seqs
     // if (pos_array[0] > p) { // 0th copy
@@ -678,7 +722,7 @@ int partition_seqs_core(char *seq, int8_t *hit_array, double period, int *par_po
     char *query_seq, *target_seq; int ed, start, end;
     par_pos[par_i++] = pos_array[0];
     for (i = 0; i < hit_n-1; ++i) {
-        int copy_num = (int)((double)(pos_array[i+1] - pos_array[i]) / period + 0.5);
+        int copy_num = (int)((double)(pos_array[i+1] - pos_array[i]) / (double)period + 0.5);
         //if (copy_num == 0) 
         //    err_fatal(__func__, "Unexpected copy number. (%d, %d, %lf)\n", pos_array[i], pos_array[i+1], period);
 
@@ -702,15 +746,15 @@ int partition_seqs_core(char *seq, int8_t *hit_array, double period, int *par_po
     return par_i;
 }
 
-static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, self_dp_t **dp, chain_t ch) {
-    int i, j, start, end, seed_id, mem_l; self_dp_t dp_cell;
+static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, dp_t **dp, chain_t ch) {
+    int i, j, start, end, seed_id, mem_l; dp_t dp_cell;
     int *seed_hits = (int*)_err_calloc(seed_n, sizeof(int));
     for (i = 0; i < ch.len; ++i) {
-        dp_cell = dp[ch.chain[i].i][ch.chain[i].j];
+        dp_cell = dp[ch.cell[i].i][ch.cell[i].j];
         start = dp_cell.start, end = dp_cell.end, mem_l = dp_cell.mem_l;
         for (j = 0; j <= mem_l; ++j) {
-            // printf("seed_id: %d => start: %d, end: %d\n", seed_id, start, end);
             seed_id = seed_ids[end-j];
+            // printf("seed_id: %d => start: %d, end: %d\n", seed_id, start-j, end-j);
             seed_hits[seed_id] += (1-hit_array[seed_id][start-j]);
             seed_hits[seed_id] += (1-hit_array[seed_id][end-j]);
 
@@ -730,10 +774,10 @@ static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, sel
     return max_id;
 }
 
-int partition_seqs(char *seq, self_dp_t **dp, int *seed_ids, int seed_n, chain_t ch, int *par_pos) {
+int partition_seqs(char *seq, dp_t **dp, int *seed_ids, int seed_n, chain_t ch, int *par_pos) {
     int i, seq_len;
 
-    double period = dp[ch.chain[0].i][ch.chain[0].j].period;
+    int period = dp[ch.cell[0].i][ch.cell[0].j].end - dp[ch.cell[0].i][ch.cell[0].j].start;
     seq_len = strlen(seq);
     int array_size = seq_len; // (int)(period) * 2;
     int8_t **hit_array = (int8_t**)_err_malloc(sizeof(int8_t*) * array_size);
@@ -744,6 +788,37 @@ int partition_seqs(char *seq, self_dp_t **dp, int *seed_ids, int seed_n, chain_t
 
     for (i = 0; i < array_size; ++i) free(hit_array[i]); free(hit_array);
     return par_n;
+}
+
+void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int seed_n, int *seed_ids, int seq_len, char *seq, uint8_t *bseq) {
+    int i, j, ch_i; chain_t ch;
+    for (ch_i = 0; ch_i < ch_n; ++ch_i) {
+        ch = chain[ch_i];
+        int p = dp[ch.cell[0].i][ch.cell[0].j].end - dp[ch.cell[0].i][ch.cell[0].j].start; 
+        int *par_pos = (int*)_err_malloc(seq_len / p * 2 * sizeof(int));
+        int par_n = partition_seqs(seq, dp, seed_ids, seed_n, ch, par_pos);
+
+        char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)), *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
+        int seq_i = 0, start, end;
+        for (i = 0; i < par_n-1; ++i) {
+            if (par_pos[i] > 0 && par_pos[i+1] > 0) {
+                start = par_pos[i], end = par_pos[i+1];
+                seqs[seq_i] = (char*)_err_calloc((end - start + 1), sizeof(char));
+                //strncpy(seqs[seq_i++], seq + start, end - start);
+                for (j = start; j < end; ++j) {
+                    seqs[seq_i][j-start] = "ACGTN"[bseq[j]]; // make sure it's upper case
+                } seqs[seq_i++][end-start] = '\0';
+                printf("seqs(%d:%d,%d): %s\n", end-start, start, end, seqs[seq_i-1]);
+            }
+        }
+        // msa of seqs
+        spoa_msa(seqs, seq_i, cons_seq);
+        printf("cons: %s\n", cons_seq);
+
+        free(par_pos);
+        for (i = 0; i < seq_i; ++i) free(seqs[i]); 
+        free(seqs); free(cons_seq);
+    }
 }
 
 // 0. build Hash index, generate coordinate of all the hits (x,y)
@@ -758,48 +833,34 @@ int partition_seqs(char *seq, self_dp_t **dp, int *seed_ids, int seed_n, chain_t
 // 4. polish consensus result
 int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp) {
     if (seq_len < mtp->k) return 0;
-    int8_t *bseq = (int8_t*)_err_malloc(seq_len * sizeof(int8_t));
+    int i;
+    uint8_t *bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
     get_bseq(seq, seq_len, bseq);
 
     // generate hash value for each k-mer
-    hash_t *h = (hash_t*)_err_malloc((seq_len - mtp->w) / mtp->s * mtp->m * sizeof(hash_t));
-    int hn = build_kmer_hash(bseq, seq_len, mtp, h);
-    // return 0;
+    int hn; hash_t *h = (hash_t*)_err_malloc((seq_len - mtp->w) / mtp->s * mtp->m * sizeof(hash_t));
+    int *cu_kmer_m = (int*)_err_calloc(seq_len, sizeof(int));
+    if ((hn = build_kmer_hash(bseq, seq_len, mtp, h, cu_kmer_m)) == 0) return 0;
+    int last_m = 0;
+    for (i = 0; i < seq_len; ++i) {
+        if (cu_kmer_m[i] != 0) last_m = cu_kmer_m[i];
+        else cu_kmer_m[i] = last_m;
+    }
     printf("hash seed number: %d\n", hn);
-    if (hn == 0) return 0;
 
     // collect hash hits
     hash_t *hit_h; int *seed_ids = (int*)_err_calloc(seq_len, sizeof(int)), seed_n;
     int mem_hit_n = collect_hash_hit(h, hn, &hit_h, seed_ids, &seed_n); free(h);
 
     // dp chain
-    self_dp_t **dp; int tot_n;
-    chain_t ch = self_dp_chain(hit_h, mem_hit_n, mtp->k, &dp, &tot_n);
+    dp_t **dp; int tot_n; chain_t *chain; int ch_m;
+    int ch_n = dp_chain(hit_h, mem_hit_n, seq_len, mtp, &dp, &tot_n, cu_kmer_m, &chain, &ch_m);
 
-    // partition seqs
-    int p = (int)(dp[ch.chain[0].i][ch.chain[0].j].period + 0.5);
-    int *par_pos = (int*)_err_malloc(seq_len / p * 2 * sizeof(int));
-    int par_n = partition_seqs(seq, dp, seed_ids, seed_n, ch, par_pos);
-    char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)); 
-    char *cons_seq = (char*)_err_malloc(sizeof(char) * p * 2);
-    int i, j, seq_i = 0, start, end;
-    for (i = 0; i < par_n-1; ++i) {
-        if (par_pos[i] > 0 && par_pos[i+1] > 0) {
-            start = par_pos[i], end = par_pos[i+1];
-            seqs[seq_i] = (char*)_err_calloc((end - start + 1), sizeof(char));
-            //strncpy(seqs[seq_i++], seq + start, end - start);
-            for (j = start; j < end; ++j) {
-                seqs[seq_i][j-start] = "ACGTN"[bseq[j]]; // make sure it's upper case
-            } seqs[seq_i++][end-start] = '\0';
-            printf("seqs(%d:%d,%d): %s\n", end-start, start, end, seqs[seq_i-1]);
-        }
-    }
-    // msa of seqs
-    spoa_msa(seqs, seq_i, cons_seq);
-    printf("cons: %s\n", cons_seq);
-    
-    free(seed_ids); free(hit_h); free(bseq); free(ch.chain); free(par_pos);
+    // partition into seqs and do msa
+    seqs_msa(dp, ch_n, chain, seed_n, seed_ids, seq_len, seq, bseq);
+
+    for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain);
+    free(cu_kmer_m); free(seed_ids); free(hit_h); free(bseq);
     for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
-    for (i = 0; i < seq_i; ++i) free(seqs[i]); free(seqs); free(cons_seq);
     return 0;
 }
