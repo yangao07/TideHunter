@@ -6,8 +6,25 @@
 #include "self_chain.h"
 #include "utils.h"
 #include "kseq.h"
+#include "seq.h"
 
 KSEQ_INIT(gzFile, gzread)
+
+int get_seq_from_fx(gzFile fp, char **seq) {
+    kstream_t *fs = ks_init(fp);
+    kseq_t *read_seq = (kseq_t*)calloc(1, sizeof(kseq_t));
+    read_seq->f = fs;
+    int len;
+    if (kseq_read(read_seq) > 0) {
+        (*seq) = strdup(read_seq->seq.s);
+        len = read_seq->seq.l;
+        free(read_seq); ks_destroy(fs);
+        return len;
+    } else {
+        err_func_format_printf(__func__, "Warning: No splint sequence found.\n");
+        return 0;
+    }
+}
 
 int mini_tandem_read_seq(kseq_t *read_seq, int chunk_read_n)
 {
@@ -25,13 +42,6 @@ int THREAD_READ_I;
 pthread_rwlock_t RWLOCK;
 
 typedef struct {
-    kseq_t *read_seq, *cons_seq;
-    int cons_n, cons_m; 
-    int *cons_start, *cons_end, *cons_len; // use cons_len to partition cons_seq when cons_n > 1
-    int *cons_score;
-} tandem_seq_t;
-
-typedef struct {
     int tid;
     mini_tandem_para *mtp;
     int n_seqs; 
@@ -40,9 +50,25 @@ typedef struct {
 } thread_aux_t;
 
 // 1. output cons.fastq
-// 2 .output cons.info
-void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tandem_seq, mini_tandem_para *mtp) {
-
+// 2. output cons.info
+void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+    int i, seq_i, cons_i, cons_seq_start = 0, cons_seq_end = 0;
+    tandem_seq_t *_tseq;
+    for (seq_i = 0; seq_i < n_seqs; ++seq_i) {
+        _tseq = tseq + seq_i;
+        for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start, end
+            fprintf(stdout, ">%s_cons%d %d-%d:%d\n", (read_seq+seq_i)->name.s, cons_i, _tseq->cons_start[cons_i], _tseq->cons_end[cons_i], _tseq->cons_len[cons_i]);
+            cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
+            for (i = cons_seq_start; i < cons_seq_end; ++i)  fprintf(stdout, "%c", _tseq->cons_seq->seq.s[i]);
+            cons_seq_start += _tseq->cons_len[cons_i];
+            fprintf(stdout, "\n");
+        }
+        _tseq->cons_n = 0;
+        _tseq->cons_seq->seq.l = 0;
+        cons_seq_start = cons_seq_end = 0;
+    }
+    if (mtp->detail_fp != NULL) {
+    }
 }
 
 int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tandem_seq, mini_tandem_para *mtp) {
@@ -51,7 +77,7 @@ int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tandem_seq, mini_tandem_par
     // 2. keep top N chains, (calcuate density of each chain: tot_N_hits / tot_N_kmer)
     // 3. call consensus with each chain
     // 4. polish consensus result
-    hash_partition(read_seq->seq.s, read_seq->seq.l, mtp);
+    hash_partition(read_seq->seq.s, read_seq->seq.l, tandem_seq, mtp);
     return 0;
 }
 
@@ -82,8 +108,7 @@ tandem_seq_t *alloc_tandem_seq(int n) {
     tandem_seq_t *tseq = (tandem_seq_t*)_err_malloc(n * sizeof(tandem_seq_t));
     int i;
     for (i = 0; i < n; ++i) {
-        tseq[i].cons_seq = (kseq_t*)calloc(1, sizeof(kseq_t));
-
+        tseq[i].cons_seq = (seq_t*)calloc(1, sizeof(seq_t));
         tseq[i].cons_n = 0; tseq[i].cons_m = 1;
         tseq[i].cons_start = (int*)_err_malloc(sizeof(int));
         tseq[i].cons_end = (int*)_err_malloc(sizeof(int));
@@ -97,6 +122,9 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mini_tandem_para *mtp = (mini_tandem_para*)_err_malloc(sizeof(mini_tandem_para));
     mtp->n_thread = THREAD_N;
 
+    mtp->splint_fn = NULL; 
+    mtp->splint_seq = NULL; mtp->splint_rc_seq = NULL;
+    mtp->splint_len = 0;
     mtp->detail_fp = NULL;
     mtp->k = KMER_SIZE;
     mtp->w = KMER_WSIZE;
@@ -112,6 +140,9 @@ mini_tandem_para *mini_tandem_init_para(void) {
 
 void mini_tandem_free_para(mini_tandem_para *mtp) {
     if (mtp->detail_fp != NULL) err_fclose(mtp->detail_fp);
+    if (mtp->splint_fn != NULL) free(mtp->splint_fn);
+    if (mtp->splint_seq != NULL) free(mtp->splint_seq);
+    if (mtp->splint_rc_seq != NULL) free(mtp->splint_rc_seq);
     free(mtp);
 }
 
@@ -123,6 +154,13 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
     kseq_t *read_seq = (kseq_t*)calloc(CHUNK_READ_N, sizeof(kseq_t));
     for (i = 0; i < CHUNK_READ_N; ++i) read_seq[i].f = fs;
     tandem_seq_t *tseq = alloc_tandem_seq(CHUNK_READ_N);
+
+    if (mtp->splint_fn != NULL) {
+        gzFile splint_fp = xzopen(mtp->splint_fn, "r");
+        mtp->splint_len = get_seq_from_fx(splint_fp, &(mtp->splint_seq));
+        mtp->splint_rc_seq = get_rc_seq(mtp->splint_seq, mtp->splint_len);
+        err_gzclose(splint_fp);
+    }
 
     // alloc and initialization for auxiliary data
     thread_aux_t *aux;
@@ -163,9 +201,9 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
     free(aux);
     for (i = 0; i < CHUNK_READ_N; ++i) {
         free((read_seq+i)->name.s); free((read_seq+i)->comment.s); free((read_seq+i)->seq.s); free((read_seq+i)->qual.s);
-        kseq_t *cons_seq = tseq[i].cons_seq;
+        seq_t *cons_seq = tseq[i].cons_seq;
         free(cons_seq->name.s); free(cons_seq->comment.s); free(cons_seq->seq.s); free(cons_seq->qual.s); 
         free(tseq[i].cons_seq); free(tseq[i].cons_start); free(tseq[i].cons_end); free(tseq[i].cons_len); free(tseq[i].cons_score);
-    } free(read_seq); free(tseq); ks_destroy(fs); gzclose(readfp); 
+    } free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp);
     return 0;
 }

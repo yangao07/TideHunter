@@ -1,6 +1,8 @@
 #ifndef SELF_CHAIN_H
 #define SELF_CHAIN_H
 
+#include "mini_tandem.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -9,15 +11,6 @@ typedef int64_t hash_t;
 #define _8mask 0xff
 #define _16mask 0xffff
 #define _32mask 0xffffffff
-
-#define MIN_SIM_PERIOD_RAT 0.98
-#define MAX_SIM_PERIOD_RAT 1.02
-
-typedef struct {
-    int min_p, max_p;
-    int start_i, end_i;
-    int tot_n;
-} hit_bucket_t;
 
 typedef struct {
     int i:32, j:32;
@@ -74,7 +67,7 @@ typedef struct {
 
 //void radix_sort_hash(hash_t *beg, hash_t *end);
 
-int hash_partition(char *seq, int seq_len, mini_tandem_para *mtp);
+int hash_partition(char *seq, int seq_len, tandem_seq_t *tandem_seq, mini_tandem_para *mtp);
 
 #ifdef __cplusplus
 }

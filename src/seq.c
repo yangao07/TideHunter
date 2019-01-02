@@ -1,11 +1,15 @@
 #include "seq.h"
 #include "utils.h"
+#include "kseq.h"
+
 
 #define nt_A 0
 #define nt_C 1
 #define nt_G 2
 #define nt_T 3
 #define nt_N 4
+
+KSEQ_INIT(gzFile, gzread)
 
 // ACGTN=>01234
 unsigned char nst_nt4_table[256] = {
@@ -78,4 +82,13 @@ int get_bseq(char *seq, int seq_len, uint8_t *bseq) {
         bseq[i] = nst_nt4_table[(int)seq[i]];
     }
     return 0;
+}
+
+char *get_rc_seq(char *seq, int seq_len) {
+    int i;
+    char *rc_seq = (char*)_err_malloc(sizeof(char) * (seq_len+1));
+    for (i = 0; i < seq_len; ++i) {
+        rc_seq[seq_len-i-1] = "ACGTN"[com_nst_nt4_table[(int)seq[i]]];
+    } rc_seq[seq_len] = '\0';
+    return rc_seq;
 }

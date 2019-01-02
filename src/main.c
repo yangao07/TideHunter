@@ -22,6 +22,7 @@ const struct option mini_tandem_opt [] = {
     { "max-diverg", 1, NULL, 'e' },
     { "rep-range", 1, NULL, 'r' },
 
+    { "splint-seq", 1, NULL, 'S' },
     { "detail-out", 1, NULL, 'd' },
 
     { "thread", 1, NULL, 't' },
@@ -31,7 +32,8 @@ const struct option mini_tandem_opt [] = {
 static int usage(void)
 {
     err_printf("\n");
-	err_printf("Program: %s : Consensus calling from noisy concatemeric long-read\n", PROG);
+	err_printf("%s: Tandem repeat detection and consensus calling from noisy concatemeric long-read\n\n", PROG);
+
     time_t t; time(&t);
     err_printf("Version: %s Build date: %s", VERSION, ctime(&t));
     err_printf("Contact: %s\n\n", CONTACT);
@@ -50,6 +52,7 @@ static int usage(void)
     err_printf("         -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
     err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
 
+    err_printf("         -S --splint-seq  [STR]    splint sequence in FASTA/FASTQ format. [NULL]\n");
     err_printf("         -d --detail-out  [STR]    detailed information of each consensus. [NULL]\n");
     err_printf("                                   (start, end, score, etc.)\n");
 
@@ -57,13 +60,12 @@ static int usage(void)
 	return 1;
 }
 
-// TODO input splint/primer sequence
 // TODO add score para 
 int main(int argc, char *argv[])
 {
     mini_tandem_para *mtp = mini_tandem_init_para();
     int c;
-    while ((c = getopt_long(argc, argv, "k:w:m:ps:r:e:d:t:",mini_tandem_opt, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "k:w:m:ps:r:e:S:d:t:",mini_tandem_opt, NULL)) >= 0) {
         switch(c)
         {
             case 'k': mtp->k = atoi(optarg); break;
@@ -74,6 +76,7 @@ int main(int argc, char *argv[])
             case 'e': mtp->max_div = atof(optarg); break;
             case 'r': mtp->max_range = atoi(optarg); break;
             case 'd': mtp->detail_fp = xopen(optarg, "w"); break;
+            case 'S': mtp->splint_fn = strdup(optarg); break;
             case 't': mtp->n_thread = atoi(optarg); break;
             default:
                       err_printf("Error: unknown option: -%c %s.\n", c, optarg);

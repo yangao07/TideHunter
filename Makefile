@@ -15,6 +15,9 @@ EDLIB_DIR = ./edlib
 EDLIB_INCLUDE = ./edlib/include
 EDLIB     = $(EDLIB_DIR)/edlib.o
 
+KSW2_DIR  = ./ksw2
+KSW2_INCLUDE = ./ksw2
+
 SPOA_DIR  = ./spoa
 SPOA_INCLUDE = ./spoa/include/spoa
 SPOALIB_DIR = $(SPOA_DIR)/build/lib
@@ -28,8 +31,9 @@ LIB       += -lspoa
 BIN_DIR =	./bin
 SRC_DIR =   ./src
 
-CSOURCE   = $(wildcard $(SRC_DIR)/*.c)
-CPPSOURCE = $(wildcard $(SRC_DIR)/*.cpp)
+CSOURCE   =  $(wildcard $(SRC_DIR)/*.c)
+CSOURCE   += $(wildcard $(KSW2_DIR)/*.c)
+CPPSOURCE =  $(wildcard $(SRC_DIR)/*.cpp)
 
 SOURCE    = $(CSOURCE) $(CPPSOURCE)
 DSOURCE   = $(SOURCE) $(EDLIB_DIR)/src/edlib.cpp
@@ -40,6 +44,7 @@ OBJS    += $(EDLIB)
 BIN     =	$(BIN_DIR)/miniTandem
 
 GDB_DEBUG   = $(BIN_DIR)/gdb_miniTandem
+ALL_GDB_DEBUG = $(BIN_DIR)/gdb_all_miniTandem
 DMARCRO 	= -D __DEBUG__
 ALL_HIT     = -D __ALL_HIT__ 
 
@@ -54,6 +59,7 @@ ALL_HIT     = -D __ALL_HIT__
 all:		$(MINMAP2LIB) $(BIN) 
 miniTandem: $(BIN)
 gdb_miniTandem: $(SOURCE) $(GDB_DEBUG) 
+gdb_all_miniTandem: $(SOURCE) $(ALL_GDB_DEBUG) 
 
 
 $(BIN): $(OBJS) Makefile
@@ -66,6 +72,9 @@ $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h 
 	$(CC) -c $(CFLAGS) $< -I $(EDLIB_INCLUDE) -o $@
 
+$(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
+	$(CC) -c $(CFLAGS) $< -I $(KSW2_INCLUDE) -o $@
+
 $(SPOALIB): 
 	wd=$(PWD); \
 	cd $(SPOA_DIR); mkdir build; cd build; \
@@ -76,12 +85,16 @@ $(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPO
 	$(CPP) -c $< $(CPPFLAGS) -I $(SPOA_INCLUDE) -o $@
 
 
+$(ALL_GDB_DEBUG): $(DSOURCE) $(SPOALIB) Makefile
+	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
+	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(ALL_HIT) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(KSW2_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
+
 $(GDB_DEBUG): $(DSOURCE) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
+	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(KSW2_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(BIN)
+	rm -f $(SRC_DIR)/*.o $(KSW2_DIR)/*.o $(EDLIB) $(SPOALIB) $(BIN)
 
 clean_debug:
 	rm -f $(GDB_DEBUG)
@@ -92,6 +105,7 @@ $(SRC_DIR)/seq.o: $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
 $(SRC_DIR)/self_chain.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h 
 $(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/mini_tandem.h
 $(SRC_DIR)/mini_tandem.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
-$(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h
 $(SRC_DIR)/utils.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h
-$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/utils.h
+$(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h
+$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/utils.h $(SRC_DIR)/spoa_align.h
+$(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/utils.h
