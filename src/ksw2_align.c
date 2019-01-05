@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-#include "../ksw2/ksw2.h"
 #include "ksw2.h"
 
 #ifdef __cplusplus

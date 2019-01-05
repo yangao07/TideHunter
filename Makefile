@@ -1,50 +1,58 @@
 CC      =	gcc
 CPP		=   g++
-CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+CFLAGS  =	-Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 CPPFLAGS=   -std=c++11
-DFLAGS  =	-g -Wall #-pg
-#MINIMAP2_DIR = ./minimap2
-#MINMAP2LIB  =   $(MINIMAP2_DIR)/libminimap2.a
-#PYLIB   =   -lpython2.7
+#CFLAGS  =	-g -Wall -D __DEBUG__ 
+#CFLAGS  =	-g -Wall -pg
+#PGFLAGS =   -pg
 INCLUDE =
 LIB     =	-lm -lz -lpthread
-LIB_DIR =   
-PY_DIR = /usr/include/python2.7
+#PYLIB   =   -lpython2.7
+#PY_DIR = /usr/include/python2.7
 
-EDLIB_DIR = ./edlib
+EDLIB_DIR     = ./edlib
 EDLIB_INCLUDE = ./edlib/include
-EDLIB     = $(EDLIB_DIR)/edlib.o
+EDLIB         = $(EDLIB_DIR)/src/edlib.o
+INCLUDE      += -I$(EDLIB_INCLUDE)
 
-KSW2_DIR  = ./ksw2
+ABPOA_DIR = ./abPOA
+ABPOA_INCLUDE = $(ABPOA_DIR)/include
+ABPOA_LIB_DIR = $(ABPOA_DIR)/lib
+ABPOALIB      = $(ABPOA_DIR)/lib/libabpoa.a
+ABPOALIB_FLAG = -L $(ABPOA_LIB_DIR) -labpoa
+INCLUDE      += -I$(ABPOA_INCLUDE)
+
+KSW2_DIR     = ./ksw2
 KSW2_INCLUDE = ./ksw2
+INCLUDE     += -I$(KSW2_INCLUDE)
 
-SPOA_DIR  = ./spoa
+SPOA_DIR     = ./spoa
 SPOA_INCLUDE = ./spoa/include/spoa
-SPOALIB_DIR = $(SPOA_DIR)/build/lib
-SPOALIB   = $(SPOA_DIR)/build/lib/libspoa.a
-LIB_DIR   += -L $(SPOALIB_DIR)
-LIB       += -lspoa
+SPOALIB_DIR  = $(SPOA_DIR)/build/lib
+SPOALIB      = $(SPOA_DIR)/build/lib/libspoa.a
+SPOALIB_FLAG = -L $(SPOALIB_DIR) -lspoa
+INCLUDE     += -I$(SPOA_INCLUDE)
 
-#INCLUDE = -I $(MINIMAP2_DIR) -I $(PY_DIR)
 #TODO different -I for different .c
 
 BIN_DIR =	./bin
 SRC_DIR =   ./src
 
-CSOURCE   =  $(wildcard $(SRC_DIR)/*.c)
+CSOURCE    = $(wildcard $(SRC_DIR)/*.c)
 CSOURCE   += $(wildcard $(KSW2_DIR)/*.c)
-CPPSOURCE =  $(wildcard $(SRC_DIR)/*.cpp)
+CPPSOURCE  = $(wildcard $(SRC_DIR)/*.cpp)
+CPPSOURCE += $(EDLIB_DIR)/src/edlib.cpp
 
-SOURCE    = $(CSOURCE) $(CPPSOURCE)
-DSOURCE   = $(SOURCE) $(EDLIB_DIR)/src/edlib.cpp
+SOURCE  = $(CSOURCE) $(CPPSOURCE)
+DSOURCE = $(SOURCE) 
 
-OBJS    =  $(CSOURCE:.c=.o) $(CPPSOURCE:.cpp=.o)
-OBJS    += $(EDLIB)
+OBJS    = $(CSOURCE:.c=.o) $(CPPSOURCE:.cpp=.o)
+#OBJS   += $(EDLIB)
 
 BIN     =	$(BIN_DIR)/miniTandem
 
-GDB_DEBUG   = $(BIN_DIR)/gdb_miniTandem
-ALL_GDB_DEBUG = $(BIN_DIR)/gdb_all_miniTandem
+#GDB_DEBUG   = $(BIN_DIR)/gdb_miniTandem
+#ALL_GDB_DEBUG = $(BIN_DIR)/gdb_all_miniTandem
 DMARCRO 	= -D __DEBUG__
 ALL_HIT     = -D __ALL_HIT__ 
 
@@ -58,28 +66,42 @@ ALL_HIT     = -D __ALL_HIT__
 
 all:		$(MINMAP2LIB) $(BIN) 
 miniTandem: $(BIN)
-gdb_miniTandem: $(SOURCE) $(GDB_DEBUG) 
-gdb_all_miniTandem: $(SOURCE) $(ALL_GDB_DEBUG) 
+#gdb_miniTandem: $(SOURCE) $(GDB_DEBUG) 
+#gdb_all_miniTandem: $(SOURCE) $(ALL_GDB_DEBUG) 
 
 
-$(BIN): $(OBJS) Makefile
+$(BIN): $(OBJS) $(ABPOALIB) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(OBJS) -L $(SPOALIB_DIR) $(LIB) -o $@
+	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@ $(PGFLAGS)
 
+# edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
 	$(CPP) -c $< -I $(EDLIB_INCLUDE) -o $@
 
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h 
 	$(CC) -c $(CFLAGS) $< -I $(EDLIB_INCLUDE) -o $@
 
-$(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
-	$(CC) -c $(CFLAGS) $< -I $(KSW2_INCLUDE) -o $@
+# abPOA
+$(ABPOALIB): 
+	wd=$(PWD); \
+	cd $(ABPOA_DIR); \
+	make simd_check; make libabpoa; \
+	cd $(wd);
 
+# spoa
 $(SPOALIB): 
 	wd=$(PWD); \
 	cd $(SPOA_DIR); mkdir build; cd build; \
 	cmake -DCMAKE_BUILD_TYPE=Release ..;	\
-	make; cd $(wd);
+	make; \
+	cd $(wd);
+
+$(SRC_DIR)/abpoa_align.o: $(SRC_DIR)/abpoa_align.c $(ABPOA)
+	$(CC) -c $(CFLAGS) $< -I $(ABPOA_INCLUDE) -o $@
+
+# ksw2
+$(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
+	$(CC) -c $(CFLAGS) $< -I $(KSW2_INCLUDE) -o $@
 
 $(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPOALIB)
 	$(CPP) -c $< $(CPPFLAGS) -I $(SPOA_INCLUDE) -o $@
@@ -87,14 +109,14 @@ $(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPO
 
 $(ALL_GDB_DEBUG): $(DSOURCE) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(ALL_HIT) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(KSW2_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
+	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(ALL_HIT) $(INCLUDE) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@
 
-$(GDB_DEBUG): $(DSOURCE) $(SPOALIB) Makefile
+$(GDB_DEBUG): $(DSOURCE) $(ABPOALIB) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) -I $(EDLIB_INCLUDE) -I $(KSW2_INCLUDE) -I $(SPOA_INCLUDE) $(LIB_DIR) $(LIB) -o $@
+	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(KSW2_DIR)/*.o $(EDLIB) $(SPOALIB) $(BIN)
+	rm -f $(SRC_DIR)/*.o $(KSW2_DIR)/*.o $(EDLIB) $(SPOALIB) $(ABPOALIB) $(BIN)
 
 clean_debug:
 	rm -f $(GDB_DEBUG)

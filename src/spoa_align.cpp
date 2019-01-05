@@ -16,6 +16,7 @@ extern "C" {
         }
         std::string consensus = graph->generate_consensus();
         strcpy(cons_seq, consensus.c_str());
+        int cons_len = consensus.length();
 #ifdef __DEBUG__
         std::vector<std::string> msa;
         graph->generate_multiple_sequence_alignment(msa);
@@ -23,7 +24,7 @@ extern "C" {
             fprintf(stdout, "%s\n", it.c_str());
         }
 #endif
-        return 0;
+        return cons_len;
     }
 }
 

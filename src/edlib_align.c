@@ -3,7 +3,6 @@
 #include <string.h>
 #include "utils.h"
 #include "edlib_align.h"
-#include "../edlib/include/edlib.h"
 #include "edlib.h"
 
 #ifdef __cplusplus
@@ -80,7 +79,7 @@ int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, in
     if (result.status == EDLIB_STATUS_OK) {
         ed = result.editDistance, *start = result.startLocations[0], *end = result.endLocations[0];
 #ifdef __DEBUG__
-        printf("Edlib-HW: %d, %d, %d\n", result.editDistance, result.alignmentLength, result.endLocations[0]);
+        printf("Edlib-HW: %d, %d, %d\n", result.editDistance, result.startLocations[0], result.endLocations[0]);
 #endif
     }
     edlibFreeAlignResult(result);

@@ -56,7 +56,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
     tandem_seq_t *_tseq;
     for (seq_i = 0; seq_i < n_seqs; ++seq_i) {
         _tseq = tseq + seq_i;
-        for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start, end
+        for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start,end
             fprintf(stdout, ">%s_cons%d %d-%d:%d\n", (read_seq+seq_i)->name.s, cons_i, _tseq->cons_start[cons_i], _tseq->cons_end[cons_i], _tseq->cons_len[cons_i]);
             cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
             for (i = cons_seq_start; i < cons_seq_end; ++i)  fprintf(stdout, "%c", _tseq->cons_seq->seq.s[i]);
@@ -133,6 +133,10 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->hpc = 0;
     mtp->max_div = MAX_DIV;
     mtp->div_exp = exp(mtp->k * MAX_DIV);
+    mtp->min_p = MIN_PERIOD;
+    mtp->max_p = MAX_PERIOD;
+
+
     mtp->max_range = REP_RANGE;
 
     return mtp;

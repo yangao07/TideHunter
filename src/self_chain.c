@@ -4,6 +4,7 @@
 #include "mini_tandem.h"
 #include "self_chain.h"
 #include "edlib_align.h"
+#include "abpoa_align.h"
 #include "ksw2_align.h"
 #include "spoa_align.h"
 #include "seq.h"
@@ -54,14 +55,12 @@ static inline int ilog2_32(uint32_t v)
 
 // hash: kmer-key | rightmost-pos
 int direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h, int *cu_kmer_m) {
-    int c, l, hi=0, pos, key;
-    uint32_t mask = (1 << 2*k) - 1;
+    int c, l, hi=0, pos, key; uint32_t mask = (1 << 2*k) - 1;
 
     for (key = l = pos = 0; pos < seq_len; ++pos) {
         c = bseq[pos];
         if (use_hpc) while (pos+1 < seq_len && bseq[pos+1] == c) ++pos;
         key = key << 2 | c;
-
         if (++l == k) { // get a kmer
             key &= mask; h[hi++] = ((hash_t)key << 32) | pos;
             cu_kmer_m[pos] = hi;
@@ -85,14 +84,12 @@ int direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h
 }
 
 int overlap_direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
-    int c, l, hi=0, pos; 
-    uint32_t key, mask = (1 << 2*k) - 1;
+    int c, l, hi=0, pos; uint32_t key, mask = (1 << 2*k) - 1;
 
     for (key = pos = l = 0; pos < seq_len; ++pos) {
         c = bseq[pos];
         if (use_hpc) while (pos + 1 < seq_len && bseq[pos+1] == c) ++pos;
         key = key << 2 | c;
-
         if (++l == k) { // get a kmer
             key &= mask; h[hi++] = ((hash_t)key << 32) | pos;
             l = k-s;
@@ -294,13 +291,13 @@ int build_kmer_hash(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h
     return 0;
 }
 
-// TODO use multiple-hit seeds that connects multiple-repeats (>2)
+// TODO use multiple-hit seeds that connects multiple-repeats (n>2)
 // 0. h: hash_value | position
 // 1. hash_hit1: period | end
 // 2. hit_h2: end | period | K ; K : MEM hit's length
 // 3. seed_ids[hit_end] = seed_id
 // collect cumulative kmer and hits number for each pos (for estimate of n and e)
-int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *seed_n) {
+int collect_mem_hash_hit(hash_t *h, int hn, int k, int min_p, int max_p, hash_t **hash_hit, int *seed_ids, int *seed_n) {
     radix_sort_hash(h, h + hn); // sort h by hash values
 
     int i, n; int hit_n = 0; *seed_n = 0;
@@ -308,39 +305,26 @@ int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *s
     // calculate total hits number
     for (i = 1, n = 1; i < hn; ++i) {
         if (h[i] >> 32 != h[i-1] >> 32) {
-#ifdef __ALL_HIT__
-            hit_n += (n * (n-1)) >> 1; // for each key, generate C(n,2) hits
-#else
             hit_n += (n-1); // use (n-1): only collect the adjacent hit
-#endif
             n = 1;
         } else ++n;
     }
-#ifdef __ALL_HIT__
-    hit_n += (n * (n-1)) >> 1;
-#else
     hit_n += (n-1);
-#endif
 
     // generate hash_hit1: period | end
     hash_t *hash_hit1 = (hash_t*)_err_malloc(hit_n * sizeof(hash_t));
-    int start_i, j, hi;
+    int start_i, j, hi; int32_t p;
     for (start_i = 0, hi = 0, i = 1, n = 1; i < hn; ++i) {
         if ((h[i] >> 32) != (h[i-1] >> 32)) {
             if (n > 1) {
                 for (j = 1; j < n; ++j) {
-#ifdef __ALL_HIT__
-                    int k;
-                    for (k = start_i; k < i-j; ++k) {
-                        hash_hit1[hi] = _set_hash_hit1(h[k], h[k+j]);
+                    p = h[start_i+j] - h[start_i+j-1];
+                    if (p >= min_p && p <= max_p) {
+                        hash_hit1[hi] = ((hash_t)p << 32) | (h[start_i+j] & _32mask);
                         ++hi;
-                    }
-#else
-                    hash_hit1[hi] = _set_hash_hit1(h[start_i+j-1], h[start_i+j]);
-                    ++hi;
+                        seed_ids[h[start_i+j] & _32mask] = *seed_n;
+                    } else --hit_n;
                     // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
-#endif
-                    seed_ids[h[start_i+j] & _32mask] = *seed_n;
                 }
                 ++(*seed_n);
             }
@@ -349,57 +333,103 @@ int collect_hash_hit(hash_t *h, int hn, hash_t **hash_hit, int *seed_ids, int *s
     }
     if (n > 1) {
         for (j = 1; j < n; ++j) {
-#ifdef __ALL_HIT__
-            int k;
-            for (k = start_i; k < i-j; ++k) {
-                hash_hit1[hi] = _set_hash_hit1(h[k], h[k+j]);
+            p = h[start_i+j] - h[start_i+j-1];
+            if (p >= min_p && p <= max_p) {
+                hash_hit1[hi] = ((hash_t)p << 32) | (h[start_i+j] & _32mask);
                 ++hi;
-            }
-#else
-            hash_hit1[hi] = _set_hash_hit1(h[start_i+j-1], h[start_i+j]);
-            ++hi;
-            // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
-#endif
-            seed_ids[h[start_i+j] & _32mask] = *seed_n;
+                // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
+                seed_ids[h[start_i+j] & _32mask] = *seed_n;
+            } else --hit_n;
         }
         ++(*seed_n);
     }
     radix_sort_hash(hash_hit1, hash_hit1 + hit_n); // sort hash_hit1 by period
 
-    // generate hash_hit2: end:32 | period:16 | K:16 ; K: MEM hit's length
-    int mem_hit_n;
+
+    // generate mem_hash_hit: end:32 | period:16 | K:16 ; K: MEM hit's length
+    int mem_hit_n, mem_l; // TODO mem hit leads to a fewer number of hit in the chain, then a higher estimate of sequence divergence
     for (i = 1, mem_hit_n = 0, n = 0; i < hit_n; ++i) {
-        if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (_get_hash_hit1_end(hash_hit1, i) != _get_hash_hit1_end(hash_hit1, i-1)+1)) {         
+        if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (mem_l = _get_hash_hit1_end(hash_hit1, i) - _get_hash_hit1_end(hash_hit1, i-1)) > k) {         
 
             ++mem_hit_n;
             n = 0;
         } else { // (_get_hash_hit1_end(hash_hit1, i) == _get_hash_hit1_end(hash_hit1, i-1)+1)
-            if (n == _16mask) {
-                n = 0;
+            if (n + mem_l > _16mask) {
+                n = mem_l - 1;
                 ++mem_hit_n;
-            } else ++n;
+            } else n += mem_l;
         }
     }
     ++mem_hit_n;
 
     *hash_hit = (hash_t*)_err_malloc(mem_hit_n * sizeof(hash_t));
     for (hi = 0, i = 1, n = 0; i < hit_n; ++i) {
-        // TODO mem dis > 1
-        if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (_get_hash_hit1_end(hash_hit1, i) != _get_hash_hit1_end(hash_hit1, i-1)+1)) {         
-            (*hash_hit)[hi++] = _set_hash_hit2(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
+        if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (mem_l = _get_hash_hit1_end(hash_hit1, i) - _get_hash_hit1_end(hash_hit1, i-1)) > k) {         
+            (*hash_hit)[hi++] = _set_mem_hash_hit(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
             n = 0;
         } else { // (_get_hash_hit1_end(hash_hit1, i) == _get_hash_hit1_end(hash_hit1, i-1)+1)
-            if (n == _16mask) {
-                (*hash_hit)[hi++] = _set_hash_hit2(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
-                n = 0;
-            } else ++n;
+            if ((n + mem_l) > _16mask) {
+                (*hash_hit)[hi++] = _set_mem_hash_hit(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
+                n = mem_l-1;
+            } else n += mem_l;
         }
     }
-    (*hash_hit)[hi++] = _set_hash_hit2(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
-    radix_sort_hash((*hash_hit), (*hash_hit) + mem_hit_n); // sort hash_hit2 by end
-
+    (*hash_hit)[hi++] = _set_mem_hash_hit(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
+    radix_sort_hash((*hash_hit), (*hash_hit) + mem_hit_n); // sort mem_hash_hit by end
     free(hash_hit1);
     return mem_hit_n;
+}
+
+int collect_hash_hit(hash_t *h, int hn, int min_p, int max_p, hash_t **hash_hit, int *seed_ids, int *seed_n) {
+    radix_sort_hash(h, h + hn); // sort h by hash values
+
+    int i, n; int hit_n = 0; *seed_n = 0;
+
+    // calculate total hits number
+    for (i = 1, n = 1; i < hn; ++i) {
+        if (h[i] >> 32 != h[i-1] >> 32) {
+            hit_n += (n-1); // use (n-1): only collect the adjacent hit
+            n = 1;
+        } else ++n;
+    }
+    hit_n += (n-1);
+
+    // generate hash_hit1: period | end
+    // make K always be 0
+    // generate hash_hit: end:32 | period:16 | K:16 ; K: MEM hit's length
+    *hash_hit = (hash_t*)_err_malloc(hit_n * sizeof(hash_t));
+    int start_i, j, hi; int32_t p;
+    for (start_i = 0, hi = 0, i = 1, n = 1; i < hn; ++i) {
+        if ((h[i] >> 32) != (h[i-1] >> 32)) {
+            if (n > 1) {
+                for (j = 1; j < n; ++j) {
+                    p = h[start_i+j] - h[start_i+j-1];
+                    if (p >= min_p && p <= max_p) {
+                        (*hash_hit)[hi] = _set_mem_hash_hit(h[start_i+j] & _32mask, p, 0);
+                        ++hi;
+                        seed_ids[h[start_i+j] & _32mask] = *seed_n;
+                    } else --hit_n;
+                    // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
+                }
+                ++(*seed_n);
+            }
+            start_i = i, n = 1;
+        } else ++n;
+    }
+    if (n > 1) {
+        for (j = 1; j < n; ++j) {
+            p = h[start_i+j] - h[start_i+j-1];
+            if (p >= min_p && p <= max_p) {
+                (*hash_hit)[hi] = _set_mem_hash_hit(h[start_i+j] & _32mask, p, 0);
+                ++hi;
+                // printf("end: %lld, seed_id: %d\n", h[start_i+j] & _32mask, *seed_n);
+                seed_ids[h[start_i+j] & _32mask] = *seed_n;
+            } else --hit_n;
+        }
+        ++(*seed_n);
+    }
+    radix_sort_hash(*hash_hit, (*hash_hit) + hit_n); // sort hash_hit by end
+    return hit_n;
 }
 
 int dp_score_cmp(const void *a, const void *b) {
@@ -433,9 +463,9 @@ static inline void set_cur_hit_n(dp_t **dp, chain_t *ch, int *cu_hit_n, int seq_
     int i, j, cu_n;
 
     for (j = 0; j < dp[ch->cell[0].i][ch->cell[0].j].end; ++j) cu_hit_n[j] = 0;
-    for (i = cu_n = 1; i < ch->len; ++i) {
+    for (i = cu_n = 1; i < ch->len; ++i, ++cu_n) {
+        cu_n += dp[ch->cell[i].i][ch->cell[i].j].mem_l;
         for (j = dp[ch->cell[i-1].i][ch->cell[i-1].j].end; j < dp[ch->cell[i].i][ch->cell[i].j].end; ++j) cu_hit_n[j] = cu_n;
-        ++cu_n;
     }
     for (; j < seq_len; ++j) cu_hit_n[j] = cu_n;
 }
@@ -510,9 +540,9 @@ void init_dp(hash_t *hit_h, dp_t **dp, int *hash_index, int *size, int total_n, 
     for (i = 0; i < total_n; ++i) {
         for (j = 0; j < size[i]; ++j) {
             hash_i = hash_index[i] + j;
-            end = _get_hash_hit2_end(hit_h, hash_i);
-            period = _get_hash_hit2_period(hit_h, hash_i);
-            mem_l = _get_hash_hit2_meml(hit_h, hash_i);
+            end = _get_mem_hash_hit_end(hit_h, hash_i);
+            period = _get_mem_hash_hit_period(hit_h, hash_i);
+            mem_l = _get_mem_hash_hit_meml(hit_h, hash_i);
             start = end - period;
             dp[i][j] = (dp_t){-1, -1, start, end, mem_l, k+mem_l+0, 0};
             // printf("start: %d, end: %d\n", start, end);
@@ -710,12 +740,12 @@ int split_chain(char *seq, uint8_t *bseq, int seq_len, dp_t **dp, chain_t *ch, c
 
 // hash_hit: hash table of mem hits
 // TODO allocate DP matrix uniformly
-int dp_chain(char *seq, uint8_t *bseq, int seq_len, hash_t *hash_hit, int mem_hit_n, mini_tandem_para *mtp, dp_t ***_dp, int *tot_N, int *cu_kmer_m, chain_t **post_chain, int *post_ch_m, int *period) {
+int dp_chain(char *seq, uint8_t *bseq, int seq_len, hash_t *hash_hit, int hash_hit_n, mini_tandem_para *mtp, dp_t ***_dp, int *tot_N, int *cu_kmer_m, chain_t **post_chain, int *post_ch_m, int *period) {
     int i, j, k, idx, kmer_k = mtp->k;
     // calculate DP matrix size, allocate DP matrix
     int tot_n = 1, *array_size, *hash_index;
-    for (i = 1; i < mem_hit_n; ++i) {
-        if (_get_hash_hit2_end(hash_hit, i)  != _get_hash_hit2_end(hash_hit, i-1))
+    for (i = 1; i < hash_hit_n; ++i) {
+        if (_get_mem_hash_hit_end(hash_hit, i)  != _get_mem_hash_hit_end(hash_hit, i-1))
             tot_n += 1;
     }
     *tot_N = tot_n;
@@ -725,8 +755,8 @@ int dp_chain(char *seq, uint8_t *bseq, int seq_len, hash_t *hash_hit, int mem_hi
     dp_t **dp = *_dp;
     dp[tot_n] = (dp_t*)_err_calloc(1, sizeof(dp_t));
 
-    for (i = 1, j = 0, k = 1, idx = 0; i < mem_hit_n; ++i) {
-        if (_get_hash_hit2_end(hash_hit, i)  != _get_hash_hit2_end(hash_hit, i-1)) {
+    for (i = 1, j = 0, k = 1, idx = 0; i < hash_hit_n; ++i) {
+        if (_get_mem_hash_hit_end(hash_hit, i)  != _get_mem_hash_hit_end(hash_hit, i-1)) {
             dp[j] = (dp_t*)_err_calloc(k, sizeof(dp_t));
             hash_index[j] = idx-k+1; array_size[j++] = k;
             k = 1;
@@ -776,7 +806,7 @@ UPDATE:
     }
 
     // TODO backtrack, obtain top N chains, use max-heap
-    dp_score_t *score_rank = (dp_score_t*)_err_malloc(mem_hit_n * sizeof(dp_score_t));
+    dp_score_t *score_rank = (dp_score_t*)_err_malloc(hash_hit_n * sizeof(dp_score_t));
     int score_n = sort_dp_score(dp, array_size, tot_n, score_rank);
     int top_N = 100, ch_n = 0, ch_m = top_N;
     int **cu_hit_n = (int**)_err_malloc(top_N * sizeof(int*));
@@ -823,12 +853,12 @@ UPDATE:
     return post_ch_n;
 }
 
-int write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int start, int end) {
-    if (tseq->cons_seq->seq.l + strlen(cons_seq) >= tseq->cons_seq->seq.m) {
-        tseq->cons_seq->seq.m = tseq->cons_seq->seq.l + strlen(cons_seq) + 1;
+int write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end) {
+    if (tseq->cons_seq->seq.l + cons_len >= tseq->cons_seq->seq.m) {
+        tseq->cons_seq->seq.m = tseq->cons_seq->seq.l + cons_len + 1;
         tseq->cons_seq->seq.s = (char*)_err_realloc(tseq->cons_seq->seq.s, tseq->cons_seq->seq.m * sizeof(char));
     }
-    strcpy(tseq->cons_seq->seq.s + tseq->cons_seq->seq.l, cons_seq); tseq->cons_seq->seq.l += strlen(cons_seq); 
+    strcpy(tseq->cons_seq->seq.s + tseq->cons_seq->seq.l, cons_seq); tseq->cons_seq->seq.l += cons_len; 
 
     if (tseq->cons_n == tseq->cons_m) {
         tseq->cons_m <<= 1;
@@ -838,12 +868,11 @@ int write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int start, int end
         tseq->cons_score = (int*)_err_realloc(tseq->cons_score, tseq->cons_m * sizeof(int));
     }
     tseq->cons_start[tseq->cons_n] = start; tseq->cons_end[tseq->cons_n] = end;
-    tseq->cons_len[tseq->cons_n] = strlen(cons_seq); tseq->cons_score[tseq->cons_n] = 0; // TODO cons_score
+    tseq->cons_len[tseq->cons_n] = cons_len; tseq->cons_score[tseq->cons_n] = 0; // TODO cons_score
     ++tseq->cons_n;
     return 0;
 }
 // pos: 0-base
-// TODO HPC kmer length or discard MEM  ??
 int *partition_seqs_core(char *seq, int seq_len, int *period, int8_t *hit_array, int chain_start, int chain_end, int *par_n) {
     int i, j;
     int *pos_array = (int*)_err_malloc(sizeof(int) * seq_len), *par_pos = (int*)_err_malloc(sizeof(int) * seq_len);
@@ -854,18 +883,21 @@ int *partition_seqs_core(char *seq, int seq_len, int *period, int8_t *hit_array,
         }
     }
     // partition seq into period seperated seqs
-    int par_i = 0, l = 100, tot_len; // TODO length of l-mer XXX
+    int par_i = 0, l, tot_len; // TODO length of l-mer: period / 2
     char *query_seq, *target_seq; int copy_num, ed, start, end, target_start;
     // extend par_pos on the left
     // TODO extend non-full copy ??? like TRF does
     copy_num = (int)((double)(pos_array[0] - chain_start) / period[pos_array[0]] + 0.5);
     if (copy_num >= 1) {
+        l = period[pos_array[0]] / 2;
         for (j = copy_num; j >= 1; --j) {
             query_seq = seq + pos_array[0];
-            target_start = pos_array[0] - period[pos_array[0]] * j - (l<<1);
+            target_start = pos_array[0] - period[pos_array[0]] * j - (l<<0);
+            // target_start = pos_array[0] - period[pos_array[0]] * j - (l<<1);
             if (target_start < 0) continue;
             target_seq = seq + target_start;
-            ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
+            ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end);
+            // ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
             if (ed >= 0) par_pos[par_i++] = target_start + start;
         }
     }
@@ -876,12 +908,14 @@ int *partition_seqs_core(char *seq, int seq_len, int *period, int8_t *hit_array,
         copy_num = (int)((double)(pos_array[i+1] - pos_array[i]) / ave_p + 0.5);
         if (copy_num > 1) { // multiple copies: semi-global alignment of prefix l-mer using edlib
             tot_len = pos_array[i+1] - pos_array[i];
+            l = ave_p / 2;
             query_seq = seq + pos_array[i];
             for (j = 1; j < copy_num; ++j) {
-                target_start = pos_array[i] + ave_p * j - (l << 1);
-                // target_seq = seq + pos_array[i] + tot_len / copy_num * j - 2 * l;
+                target_start = pos_array[i] + ave_p * j - (l << 0);
+                // target_start = pos_array[i] + ave_p * j - (l << 1);
                 target_seq = seq + target_start;
-                ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
+                ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end);
+                // ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
                 if (ed < 0) { // no alignment result
                     par_pos[par_i++] = -1; // skip this copy
                 } else {
@@ -894,12 +928,16 @@ int *partition_seqs_core(char *seq, int seq_len, int *period, int8_t *hit_array,
     // extend par_pos on the right
     copy_num = (int)((double)(chain_end - pos_array[hit_n-1]) / period[pos_array[hit_n-1]] + 0.5);
     if (copy_num >= 1) {
+        l = period[pos_array[hit_n-1]] / 2;
         for (j = 1; j <= copy_num; ++j) {
             query_seq = seq + pos_array[hit_n-1];
-            target_start = pos_array[hit_n-1] + period[pos_array[hit_n-1]] * j - (l<<1);
-            if (target_start + (l<<2) >= seq_len) continue;
+            target_start = pos_array[hit_n-1] + period[pos_array[hit_n-1]] * j - (l<<0);
+            // target_start = pos_array[hit_n-1] + period[pos_array[hit_n-1]] * j - (l<<1);
+            if (target_start + (l<<1) >= seq_len) continue;
+            // if (target_start + (l<<2) >= seq_len) continue;
             target_seq = seq + target_start;
-            ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
+            ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end);
+            // ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
             if (ed >= 0) par_pos[par_i++] = target_start + start;
         }
     }
@@ -990,17 +1028,23 @@ int *partition_seqs(char *seq, int seq_len, dp_t **dp, int *period, int *seed_id
 }
 
 void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int *seed_ids, int seq_len, char *seq, uint8_t *bseq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
-    int i, j, ch_i; chain_t ch; int chain_start, chain_end;
+    int ch_i; chain_t ch; int chain_start, chain_end;
     for (ch_i = 0; ch_i < ch_n; ++ch_i) {
         ch = chain[ch_i];
         chain_start = dp[ch.cell[0].i][ch.cell[0].j].start, chain_end = dp[ch.cell[ch.len-1].i][ch.cell[ch.len-1].j].end;
         int par_n, *par_pos;
         par_pos = partition_seqs(seq, seq_len, dp, period, seed_ids, seed_n, ch, chain_start, chain_end, &par_n);
         if (par_n == 0) continue;
-        char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*)), *cons_seq = (char*)_err_calloc(seq_len, sizeof(char));
-        int seq_i = 0, start, end;
+        int start, end, cons_len;
+        char *cons_seq = (char*)_err_calloc(seq_len, sizeof(char));
+        /* start of abpoa_msa */
+        // cons_len = abpoa_msa(bseq, seq_len, par_pos, par_n, cons_seq);
+        /* end of abpoa_msa */
+        /* start of spoa_msa */
+        char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*));
+        int i, j, seq_i = 0; 
         for (i = 0; i < par_n-1; ++i) {
-            if (par_pos[i] > 0 && par_pos[i+1] > 0) {
+            if (par_pos[i] >= 0 && par_pos[i+1] >= 0) {
                 start = par_pos[i], end = par_pos[i+1];
                 seqs[seq_i] = (char*)_err_calloc((end - start + 1), sizeof(char));
                 //strncpy(seqs[seq_i++], seq + start, end - start);
@@ -1008,13 +1052,14 @@ void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int 
                     seqs[seq_i][j-start] = "ACGTN"[bseq[j]]; // make sure it's upper case
                 } seqs[seq_i++][end-start] = '\0';
 #ifdef __DEBUG__
-                printf("seqs(%d:%d,%d): %s\n", end-start, start, end, seqs[seq_i-1]);
+                printf(">seqs_%d:%d-%d\n%s\n", end-start, start, end, seqs[seq_i-1]);
 #endif
             }
         }
         // msa of seqs
-        spoa_msa(seqs, seq_i, cons_seq);
-        int cons_len = strlen(cons_seq);
+        cons_len = spoa_msa(seqs, seq_i, cons_seq);
+        for (i = 0; i < seq_i; ++i) free(seqs[i]); free(seqs);
+        /* end of spoa_msa */
 #ifdef __DEBUG__
         printf("cons(%d): %s\n", cons_len, cons_seq);
 #endif
@@ -1068,8 +1113,8 @@ void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int 
         }
 
         // write cons_seq into tseq
-        write_tandem_cons_seq(tseq, cons_seq, par_pos[0], par_pos[par_n-1]);
-        for (i = 0; i < seq_i; ++i) free(seqs[i]); free(seqs); free(cons_seq); free(par_pos);
+        write_tandem_cons_seq(tseq, cons_seq, cons_len, par_pos[0], par_pos[par_n-1]);
+        free(cons_seq); free(par_pos);
     }
 }
 
@@ -1105,12 +1150,13 @@ int hash_partition(char *seq, int seq_len, tandem_seq_t *tseq, mini_tandem_para 
 
     // collect hash hits
     hash_t *hit_h; int *seed_ids = (int*)_err_calloc(seq_len, sizeof(int)), seed_n;
-    int mem_hit_n = collect_hash_hit(h, hn, &hit_h, seed_ids, &seed_n); free(h);
+    // int hit_n = collect_mem_hash_hit(h, hn, mtp->k, mtp->min_p, mtp->max_p, &hit_h, seed_ids, &seed_n); free(h);
+    int hit_n = collect_hash_hit(h, hn, mtp->min_p, mtp->max_p, &hit_h, seed_ids, &seed_n); free(h);
 
     // dp chain
     dp_t **dp; int tot_n; chain_t *chain; int ch_m;
     int *period = (int*)_err_calloc(seq_len, sizeof(int));
-    int ch_n = dp_chain(seq, bseq, seq_len, hit_h, mem_hit_n, mtp, &dp, &tot_n, cu_kmer_m, &chain, &ch_m, period);
+    int ch_n = dp_chain(seq, bseq, seq_len, hit_h, hit_n, mtp, &dp, &tot_n, cu_kmer_m, &chain, &ch_m, period);
 
     // partition into seqs and do msa
     seqs_msa(dp, ch_n, chain, period, seed_n, seed_ids, seq_len, seq, bseq, tseq, mtp);
