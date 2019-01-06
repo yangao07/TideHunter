@@ -67,7 +67,7 @@ typedef struct {
 
 //void radix_sort_hash(hash_t *beg, hash_t *end);
 
-int hash_partition(char *seq, int seq_len, tandem_seq_t *tandem_seq, mini_tandem_para *mtp);
+int hash_partition(char *seq, int seq_len, tandem_seq_t *tandem_seq, int8_t **hit_array, int *array_m, mini_tandem_para *mtp);
 
 #ifdef __cplusplus
 }

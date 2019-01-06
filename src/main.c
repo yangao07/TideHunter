@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 {
     mini_tandem_para *mtp = mini_tandem_init_para();
     int c;
-    while ((c = getopt_long(argc, argv, "k:w:m:Hs:r:e:S:d:t:",mini_tandem_opt, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "k:w:m:Hs:r:e:p:P:S:d:t:",mini_tandem_opt, NULL)) >= 0) {
         switch(c)
         {
             case 'k': mtp->k = atoi(optarg); break;
@@ -106,5 +106,6 @@ int main(int argc, char *argv[])
     mini_tandem(argv[optind], mtp);
 End:
     mini_tandem_free_para(mtp);
+    double sys_t, usr_t; usr_sys_cputime(&usr_t, &sys_t); err_func_printf(__func__, "User: %.3f sec; Sys: %.3f sec.\n", usr_t, sys_t);
     return 0;
 }

@@ -13,9 +13,6 @@ typedef struct {
     int n_thread;
 } mini_tandem_para;
 
-
-
-
 typedef struct {
     seq_t *cons_seq;
     int cons_n, cons_m; 
@@ -23,10 +20,8 @@ typedef struct {
     int *cons_score;
 } tandem_seq_t;
 
-
-
-#define THREAD_N 4
-#define CHUNK_READ_N 10000
+#define THREAD_N 1
+#define CHUNK_READ_N 1000
 
 #define KMER_SIZE 8  // kmer length
 #define KMER_WSIZE 1 // window size

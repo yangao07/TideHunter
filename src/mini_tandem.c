@@ -44,6 +44,7 @@ pthread_rwlock_t RWLOCK;
 typedef struct {
     int tid;
     mini_tandem_para *mtp;
+    int8_t *hit_array; int array_m;
     int n_seqs; 
     kseq_t *read_seq;
     tandem_seq_t *tseq;
@@ -71,13 +72,13 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
     }
 }
 
-int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tandem_seq, mini_tandem_para *mtp) {
+int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tandem_seq, int8_t **hit_array, int *array_m, mini_tandem_para *mtp) {
     // 0. build Hash index, generate coordinate of all the hits (x,y)
     // 1. chaining by partition based on (y-x) values
     // 2. keep top N chains, (calcuate density of each chain: tot_N_hits / tot_N_kmer)
     // 3. call consensus with each chain
     // 4. polish consensus result
-    hash_partition(read_seq->seq.s, read_seq->seq.l, tandem_seq, mtp);
+    hash_partition(read_seq->seq.s, read_seq->seq.l, tandem_seq, hit_array, array_m, mtp);
     return 0;
 }
 
@@ -92,8 +93,9 @@ void mini_tandem_main(thread_aux_t *aux)
         mini_tandem_para *mtp = aux->mtp;
         kseq_t *read_seq = aux->read_seq + i; 
         tandem_seq_t *tandem_seq = aux->tseq + i;
+        int8_t *hit_array = aux->hit_array; int *array_m = &(aux->array_m);
         // generate cons_seq from seq , cons_seq may have multiple seqs
-        mini_tandem_core(read_seq, tandem_seq, mtp);
+        mini_tandem_core(read_seq, tandem_seq, &hit_array, array_m, mtp);
     }
 }
 
@@ -173,6 +175,8 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
     for (i = 0; i < mtp->n_thread; ++i) {
         aux[i].tid = i; 
         aux[i].mtp = mtp;
+        aux[i].hit_array = (int8_t*)_err_malloc(sizeof(int8_t)*10000*10000);
+        aux[i].array_m = 10000;
     }
     pthread_rwlock_init(&RWLOCK, NULL);
 
@@ -199,8 +203,10 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
         }
         // output initial consensus sequences
         mini_tandem_output(n_seqs, read_seq, tseq, mtp);
+        double sys_t, usr_t; usr_sys_cputime(&usr_t, &sys_t); err_func_printf(__func__, "User: %.3f sec; Sys: %.3f sec.\n", usr_t, sys_t);
     }
-    // free 
+    // free
+    for (i = 0; i < mtp->n_thread; ++i) free(aux[i].hit_array);
     pthread_rwlock_destroy(&RWLOCK);
     free(aux);
     for (i = 0; i < CHUNK_READ_N; ++i) {
@@ -209,5 +215,6 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
         free(cons_seq->name.s); free(cons_seq->comment.s); free(cons_seq->seq.s); free(cons_seq->qual.s); 
         free(tseq[i].cons_seq); free(tseq[i].cons_start); free(tseq[i].cons_end); free(tseq[i].cons_len); free(tseq[i].cons_score);
     } free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp);
+    double sys_t, usr_t; usr_sys_cputime(&usr_t, &sys_t); err_func_printf(__func__, "User: %.3f sec; Sys: %.3f sec.\n", usr_t, sys_t);
     return 0;
 }

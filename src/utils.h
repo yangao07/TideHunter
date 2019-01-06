@@ -31,6 +31,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <zlib.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
 #ifdef __GNUC__
 // Tell GCC to validate printf format string and args
@@ -99,6 +101,7 @@ extern "C" {
     void *err_calloc(const char* func, size_t n, size_t s);
     void *err_realloc(const char* func, void *p, size_t s);
 
+    void usr_sys_cputime(double *usr_t, double *sys_t);
 	double cputime();
 	double realtime();
     void print_format_time(FILE *out);

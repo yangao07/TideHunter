@@ -638,9 +638,13 @@ int split_chain(char *seq, uint8_t *bseq, int seq_len, dp_t **dp, chain_t *ch, c
 
         n = cu_hit_n[end]-cu_hit_n[start]+1, m = cu_kmer_m[end]-cu_kmer_m[start]+1;
         // without w*w
-        est_n = m / mtp->div_exp; // printf("Poisson-split (%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1/(1.0*k) * log((m+0.0)/(n)));
-        // est_n  = m * pow((1.0 - mtp->max_div), k); printf("Binomial-split(%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1.0 - pow((n+0.0)/(m), 1/(1.0*k)));
-
+#ifdef __DEBUG__
+        int k = 8;
+        est_n  = m * pow((1.0 - mtp->max_div), k); printf("Binomial-split(%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1.0 - pow((n+0.0)/(m), 1/(1.0*k)));
+        est_n = m / mtp->div_exp; printf("Poisson-split (%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1/(1.0*k) * log((m+0.0)/(n)));
+#else
+        est_n = m / mtp->div_exp;
+#endif
         if (dp_cell.from_i == -1) continue;
 
         if (min_n != -1 && start > min_cell.end) { // step out of last sparse valley
@@ -947,7 +951,8 @@ int *partition_seqs_core(char *seq, int seq_len, int *period, int8_t *hit_array,
 
 // multi-hits in one period:
 // very close distance of the same kmers causes a negetive score: two identical kmers in one period
-static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, dp_t **dp, chain_t ch) {
+// XXX  FIXME memory issue
+static inline int get_max_hit(int8_t *hit_array, int array_m, int *seed_ids, int seed_n, dp_t **dp, chain_t ch) {
     int i, j, start, end, seed_id, mem_l; dp_t dp_cell;
     int *seed_hits = (int*)_err_calloc(seed_n, sizeof(int));
     int *seed_last_pos = (int*)_err_malloc(seed_n * sizeof(int)); memset(seed_last_pos, -1, seed_n * sizeof(int));
@@ -973,23 +978,23 @@ static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, dp_
 
             if (seed_last_pos[seed_id] == -1) { // first
                 seed_hits[seed_id] += 2;
-                hit_array[seed_id][start-j] = 1;
-                hit_array[seed_id][end-j] = 1;
+                hit_array[seed_id*array_m + start-j] = 1;
+                hit_array[seed_id*array_m + end-j] = 1;
                 //printf("first\n");
             } else {
                 if (seed_last_pos[seed_id] == end-j) { // 
                     seed_hits[seed_id] += 1;
-                    hit_array[seed_id][start-j] = 1;
+                    hit_array[seed_id * array_m + start-j] = 1;
                     // printf("same\n");
                 } else if (seed_last_pos[seed_id] - (end-j) < (end - start) / 2) { // too close
                     // seed_hits[seed_id] stay the same;
-                    hit_array[seed_id][start-j] = 1;
-                    hit_array[seed_id][seed_last_pos[seed_id]] = 0;
+                    hit_array[seed_id * array_m + start-j] = 1;
+                    hit_array[seed_id* array_m +seed_last_pos[seed_id]] = 0;
                     // printf("close\n");
                 } else { 
                     seed_hits[seed_id] += 2;
-                    hit_array[seed_id][start-j] = 1;
-                    hit_array[seed_id][end-j] = 1;
+                    hit_array[seed_id*array_m + start-j] = 1;
+                    hit_array[seed_id*array_m + end-j] = 1;
                     // printf("regular\n");
                 }
             }
@@ -1014,32 +1019,39 @@ static inline int get_max_hit(int8_t **hit_array, int *seed_ids, int seed_n, dp_
     return max_id;
 }
 
-int *partition_seqs(char *seq, int seq_len, dp_t **dp, int *period, int *seed_ids, int seed_n, chain_t ch, int chain_start, int chain_end, int *par_n) {
+int *partition_seqs(char *seq, int seq_len, int8_t **hit_array, int *array_m, dp_t **dp, int *period, int *seed_ids, int seed_n, chain_t ch, int chain_start, int chain_end, int *par_n) {
+    int *par_pos = NULL; *par_n = 0;
     int i, array_size = seq_len; // (int)(period) * 2;
-    int8_t **hit_array = (int8_t**)_err_malloc(sizeof(int8_t*) * array_size);
-    for (i = 0; i < array_size; ++i) hit_array[i] = (int8_t*)_err_calloc(seq_len, sizeof(int8_t));
+    if (seq_len > *array_m) {
+        free(*hit_array);
+        *hit_array = (int8_t*)_err_calloc(seq_len * seq_len, sizeof(int8_t));
+        *array_m = seq_len;
+    } else memset(*hit_array, 0, seq_len * seq_len * sizeof(int8_t));
+    // int8_t **hit_array = (int8_t**)_err_malloc(sizeof(int8_t*) * array_size);
+    // for (i = 0; i < array_size; ++i) hit_array[i] = (int8_t*)_err_calloc(seq_len, sizeof(int8_t));
     // fill hit array
     int max_id;
-    int *par_pos = NULL; *par_n = 0;
-    if ((max_id = get_max_hit(hit_array, seed_ids, seed_n, dp, ch)) >= 0)
-        par_pos = partition_seqs_core(seq, seq_len, period, hit_array[max_id], chain_start, chain_end, par_n);
-    for (i = 0; i < array_size; ++i) free(hit_array[i]); free(hit_array);
+    if ((max_id = get_max_hit(*hit_array, seq_len, seed_ids, seed_n, dp, ch)) >= 0)
+        par_pos = partition_seqs_core(seq, seq_len, period, (*hit_array)+max_id*seq_len, chain_start, chain_end, par_n);
+    // for (i = 0; i < array_size; ++i) free(hit_array[i]); free(hit_array);
     return par_pos;
 }
 
-void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int *seed_ids, int seq_len, char *seq, uint8_t *bseq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+void seqs_msa(dp_t **dp, int8_t **hit_array, int *array_m, int ch_n, chain_t *chain, int *period, int seed_n, int *seed_ids, int seq_len, char *seq, uint8_t *bseq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
     int ch_i; chain_t ch; int chain_start, chain_end;
     for (ch_i = 0; ch_i < ch_n; ++ch_i) {
         ch = chain[ch_i];
         chain_start = dp[ch.cell[0].i][ch.cell[0].j].start, chain_end = dp[ch.cell[ch.len-1].i][ch.cell[ch.len-1].j].end;
         int par_n, *par_pos;
-        par_pos = partition_seqs(seq, seq_len, dp, period, seed_ids, seed_n, ch, chain_start, chain_end, &par_n);
+        par_pos = partition_seqs(seq, seq_len, hit_array, array_m, dp, period, seed_ids, seed_n, ch, chain_start, chain_end, &par_n);
         if (par_n == 0) continue;
-        int start, end, cons_len;
-        char *cons_seq = (char*)_err_calloc(seq_len, sizeof(char));
+        int start, end, cons_len=0;
+        char *cons_seq = (char*)_err_malloc(seq_len * sizeof(char));
+#ifdef __ABPOA__
         /* start of abpoa_msa */
-        // cons_len = abpoa_msa(bseq, seq_len, par_pos, par_n, cons_seq);
+        cons_len = abpoa_msa(bseq, seq_len, par_pos, par_n, cons_seq);
         /* end of abpoa_msa */
+#else
         /* start of spoa_msa */
         char **seqs = (char**)_err_malloc((par_n - 1) * sizeof(char*));
         int i, j, seq_i = 0; 
@@ -1060,6 +1072,7 @@ void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int 
         cons_len = spoa_msa(seqs, seq_i, cons_seq);
         for (i = 0; i < seq_i; ++i) free(seqs[i]); free(seqs);
         /* end of spoa_msa */
+#endif
 #ifdef __DEBUG__
         printf("cons(%d): %s\n", cons_len, cons_seq);
 #endif
@@ -1129,7 +1142,7 @@ void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int 
 //           insertion:
 // 3. call consensus with each chain
 // 4. polish consensus result
-int hash_partition(char *seq, int seq_len, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+int hash_partition(char *seq, int seq_len, tandem_seq_t *tseq, int8_t **hit_array, int *array_m, mini_tandem_para *mtp) {
     if (seq_len < mtp->k) return 0;
     int i;
     uint8_t *bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
@@ -1159,7 +1172,8 @@ int hash_partition(char *seq, int seq_len, tandem_seq_t *tseq, mini_tandem_para 
     int ch_n = dp_chain(seq, bseq, seq_len, hit_h, hit_n, mtp, &dp, &tot_n, cu_kmer_m, &chain, &ch_m, period);
 
     // partition into seqs and do msa
-    seqs_msa(dp, ch_n, chain, period, seed_n, seed_ids, seq_len, seq, bseq, tseq, mtp);
+    seqs_msa(dp, hit_array, array_m, ch_n, chain, period, seed_n, seed_ids, seq_len, seq, bseq, tseq, mtp);
+    return 0;
 
     free(period);
     for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain);

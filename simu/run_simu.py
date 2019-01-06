@@ -18,7 +18,7 @@ trf = 'trf.sh'
 pbsim = 'pbsim.sh'  # pbsim.sh in.fa out_prefix type(CLR/CCS) depth len-min len-max acc-min acc-max
 model = 'CLR'  # 'CLR'
 acc_min = 0.85
-acc_max = 1.0
+acc_max = 0.85
 
 def_read_cnt = 1000
 read_cnts = [500, 1000, 5000, 10000]

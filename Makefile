@@ -1,12 +1,13 @@
-CC      =	gcc
-CPP		=   g++
-CFLAGS  =	-Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
-CPPFLAGS=   -std=c++11
-#CFLAGS  =	-g -Wall -D __DEBUG__ 
-#CFLAGS  =	-g -Wall -pg
-#PGFLAGS =   -pg
-INCLUDE =
-LIB     =	-lm -lz -lpthread
+CC       =	gcc
+CPP		 =   g++
+CFLAGS   =	-Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+CFLAGS   =	-g -Wall -D __DEBUG__ 
+#CFLAGS   =	-g -Wall -pg
+CPPFLAGS =   -std=c++11
+#CPPFLAGS =   -std=c++11 -pg
+CFLAGS   +=  -D __ABPOA__
+INCLUDE  =
+LIB      =	-lm -lz -lpthread
 #PYLIB   =   -lpython2.7
 #PY_DIR = /usr/include/python2.7
 
@@ -72,14 +73,14 @@ miniTandem: $(BIN)
 
 $(BIN): $(OBJS) $(ABPOALIB) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@ $(PGFLAGS)
+	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@ -pg
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
 	$(CPP) -c $< -I $(EDLIB_INCLUDE) -o $@
 
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h 
-	$(CC) -c $(CFLAGS) $< -I $(EDLIB_INCLUDE) -o $@
+	$(CPP) -c $(CPPFLAGS) $< -I $(EDLIB_INCLUDE) -o $@
 
 # abPOA
 $(ABPOALIB): 

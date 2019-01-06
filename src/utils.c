@@ -335,6 +335,13 @@ void *err_realloc(const char *func, void *p, size_t s)
 /*********
  * Timer *
  *********/
+void usr_sys_cputime(double *usr_t, double *sys_t)
+{
+	struct rusage r;
+	getrusage(RUSAGE_SELF, &r);
+    *usr_t = r.ru_utime.tv_sec + 1e-6 * r.ru_utime.tv_usec;
+	*sys_t = r.ru_stime.tv_sec + 1e-6 * + r.ru_stime.tv_usec;
+}
 
 double cputime()
 {

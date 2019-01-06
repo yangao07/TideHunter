@@ -19,7 +19,7 @@ int abpoa_msa(uint8_t *bseqs, int seq_len, int *pos, int pos_n, char *cons_seq) 
     abpt->mat = (int*)malloc(abpt->m * abpt->m * sizeof(int));
     gen_simple_mat(abpt->m, abpt->mat, abpt->match, abpt->mismatch);
     // output options
-    abpt->out_msa = 1; // generate Row-Column multiple sequence alignment(RC-MSA), set 0 to disable
+    // abpt->out_msa = 1; // generate Row-Column multiple sequence alignment(RC-MSA), set 0 to disable
     abpt->out_cons = 1; // generate consensus sequence, set 0 to disable
     // abpt->out_pog = 1; // generate parital order graph using DOT, set 0 to disable
 
