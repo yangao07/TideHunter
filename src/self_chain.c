@@ -588,8 +588,6 @@ int is_in_chain(dp_t **dp, chain_t *ch, int *chain_idx, int ch_n, int cell_i, in
 void sort_chain(dp_t **dp, chain_t *chain, int *chain_idx, int ch_n) {
     if (ch_n < 2) return;
     int i, _i, j, _j, ch_end1, ch_end2; cell_t c1, c2;
-    // int *ch_idx = (int*)_err_malloc(sizeof(int) * ch_n);
-    // for (i = 0; i < ch_n; ++i) ch_idx[i] = i;
     for (_i = 0; _i < ch_n-1; ++_i) {
         i = chain_idx[_i];
         c1 = chain[i].cell[chain[i].len-1];
@@ -640,8 +638,8 @@ int split_chain(char *seq, uint8_t *bseq, int seq_len, dp_t **dp, chain_t *ch, c
         // without w*w
 #ifdef __DEBUG__
         int k = 8;
-        est_n  = m * pow((1.0 - mtp->max_div), k); printf("Binomial-split(%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1.0 - pow((n+0.0)/(m), 1/(1.0*k)));
-        est_n = m / mtp->div_exp; printf("Poisson-split (%d,%d): m: %d, n: %d, e: %.3f\n", start, end, m, n, 1/(1.0*k) * log((m+0.0)/(n)));
+        est_n  = m * pow((1.0 - mtp->max_div), k); printf("Binomial-split(%d,%d): m: %d, n: %d, est_n: %.3f, est/n: %.3f, e: %.3f\n", start, end, m, n, est_n, est_n/n, 1.0 - pow((n+0.0)/(m), 1/(1.0*k)));
+        est_n = m / mtp->div_exp; printf("Poisson-split (%d,%d): m: %d, n: %d, est_n: %.3f, est/n: %.3f, e: %.3f\n", start, end, m, n, est_n, est_n/n, 1/(1.0*k) * log((m+0.0)/(n)));
 #else
         est_n = m / mtp->div_exp;
 #endif
@@ -952,7 +950,7 @@ int *partition_seqs_core(char *seq, int seq_len, int *period, int8_t *hit_array,
 // multi-hits in one period:
 // very close distance of the same kmers causes a negetive score: two identical kmers in one period
 // XXX  FIXME memory issue
-static inline int get_max_hit(int8_t *hit_array, int array_m, int *seed_ids, int seed_n, dp_t **dp, chain_t ch) {
+static inline int get_max_hit(int8_t *hit_array, int *seed_ids, int seed_n, dp_t **dp, chain_t ch) {
     int i, j, start, end, seed_id, mem_l; dp_t dp_cell;
     int *seed_hits = (int*)_err_calloc(seed_n, sizeof(int));
     int *seed_last_pos = (int*)_err_malloc(seed_n * sizeof(int)); memset(seed_last_pos, -1, seed_n * sizeof(int));
@@ -978,23 +976,23 @@ static inline int get_max_hit(int8_t *hit_array, int array_m, int *seed_ids, int
 
             if (seed_last_pos[seed_id] == -1) { // first
                 seed_hits[seed_id] += 2;
-                hit_array[seed_id*array_m + start-j] = 1;
-                hit_array[seed_id*array_m + end-j] = 1;
+                hit_array[start-j] = 1;
+                hit_array[end-j] = 1;
                 //printf("first\n");
             } else {
                 if (seed_last_pos[seed_id] == end-j) { // 
                     seed_hits[seed_id] += 1;
-                    hit_array[seed_id * array_m + start-j] = 1;
+                    hit_array[start-j] = 1;
                     // printf("same\n");
                 } else if (seed_last_pos[seed_id] - (end-j) < (end - start) / 2) { // too close
                     // seed_hits[seed_id] stay the same;
-                    hit_array[seed_id * array_m + start-j] = 1;
-                    hit_array[seed_id* array_m +seed_last_pos[seed_id]] = 0;
+                    hit_array[start-j] = 1;
+                    hit_array[seed_last_pos[seed_id]] = 0;
                     // printf("close\n");
                 } else { 
                     seed_hits[seed_id] += 2;
-                    hit_array[seed_id*array_m + start-j] = 1;
-                    hit_array[seed_id*array_m + end-j] = 1;
+                    hit_array[start-j] = 1;
+                    hit_array[end-j] = 1;
                     // printf("regular\n");
                 }
             }
@@ -1015,35 +1013,43 @@ static inline int get_max_hit(int8_t *hit_array, int array_m, int *seed_ids, int
 #ifdef __DEBUG__
     printf("max_i: %d, max_hit_n: %d\n", max_id, max_hit_n);
 #endif
+    if (max_id != -1) { // set hit_array as max_id's hit_array
+        for (i = ch.len-1; i >= 0; --i) {
+            dp_cell = dp[ch.cell[i].i][ch.cell[i].j];
+            start = dp_cell.start, end = dp_cell.end, mem_l = dp_cell.mem_l;
+            for (j = 0; j <= mem_l; ++j) {
+                seed_id = seed_ids[end-j];
+                if (seed_id == max_id) {
+                    hit_array[end-j] = 1;
+                    hit_array[start-j] = 1;
+                } else {
+                    hit_array[end-j] = 0;
+                    hit_array[start-j] = 0;
+                }
+            }
+        }
+    }
     free(seed_hits); free(seed_last_pos);
     return max_id;
 }
 
-int *partition_seqs(char *seq, int seq_len, int8_t **hit_array, int *array_m, dp_t **dp, int *period, int *seed_ids, int seed_n, chain_t ch, int chain_start, int chain_end, int *par_n) {
-    int *par_pos = NULL; *par_n = 0;
-    int i, array_size = seq_len; // (int)(period) * 2;
-    if (seq_len > *array_m) {
-        free(*hit_array);
-        *hit_array = (int8_t*)_err_calloc(seq_len * seq_len, sizeof(int8_t));
-        *array_m = seq_len;
-    } else memset(*hit_array, 0, seq_len * seq_len * sizeof(int8_t));
-    // int8_t **hit_array = (int8_t**)_err_malloc(sizeof(int8_t*) * array_size);
-    // for (i = 0; i < array_size; ++i) hit_array[i] = (int8_t*)_err_calloc(seq_len, sizeof(int8_t));
+int *partition_seqs(char *seq, int seq_len, dp_t **dp, int *period, int *seed_ids, int seed_n, chain_t ch, int chain_start, int chain_end, int *par_n) {
+    int *par_pos = NULL, max_id; *par_n = 0;
+    int8_t *_hit_array = (int8_t*)_err_calloc(seq_len, sizeof(int8_t));
     // fill hit array
-    int max_id;
-    if ((max_id = get_max_hit(*hit_array, seq_len, seed_ids, seed_n, dp, ch)) >= 0)
-        par_pos = partition_seqs_core(seq, seq_len, period, (*hit_array)+max_id*seq_len, chain_start, chain_end, par_n);
-    // for (i = 0; i < array_size; ++i) free(hit_array[i]); free(hit_array);
+    if ((max_id = get_max_hit(_hit_array, seed_ids, seed_n, dp, ch)) >= 0)
+        par_pos = partition_seqs_core(seq, seq_len, period, _hit_array, chain_start, chain_end, par_n);
+    free(_hit_array);
     return par_pos;
 }
 
-void seqs_msa(dp_t **dp, int8_t **hit_array, int *array_m, int ch_n, chain_t *chain, int *period, int seed_n, int *seed_ids, int seq_len, char *seq, uint8_t *bseq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+void seqs_msa(dp_t **dp, int ch_n, chain_t *chain, int *period, int seed_n, int *seed_ids, int seq_len, char *seq, uint8_t *bseq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
     int ch_i; chain_t ch; int chain_start, chain_end;
     for (ch_i = 0; ch_i < ch_n; ++ch_i) {
         ch = chain[ch_i];
         chain_start = dp[ch.cell[0].i][ch.cell[0].j].start, chain_end = dp[ch.cell[ch.len-1].i][ch.cell[ch.len-1].j].end;
         int par_n, *par_pos;
-        par_pos = partition_seqs(seq, seq_len, hit_array, array_m, dp, period, seed_ids, seed_n, ch, chain_start, chain_end, &par_n);
+        par_pos = partition_seqs(seq, seq_len, dp, period, seed_ids, seed_n, ch, chain_start, chain_end, &par_n);
         if (par_n == 0) continue;
         int start, end, cons_len=0;
         char *cons_seq = (char*)_err_malloc(seq_len * sizeof(char));
@@ -1142,17 +1148,16 @@ void seqs_msa(dp_t **dp, int8_t **hit_array, int *array_m, int ch_n, chain_t *ch
 //           insertion:
 // 3. call consensus with each chain
 // 4. polish consensus result
-int hash_partition(char *seq, int seq_len, tandem_seq_t *tseq, int8_t **hit_array, int *array_m, mini_tandem_para *mtp) {
+int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+    char *seq = read_seq->seq.s; int seq_len = read_seq->seq.l; 
     if (seq_len < mtp->k) return 0;
-    int i;
-    uint8_t *bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
-    get_bseq(seq, seq_len, bseq);
+    uint8_t *bseq = get_bseq(seq, seq_len);
 
     // generate hash value for each k-mer
-    int hn; hash_t *h = (hash_t*)_err_malloc((seq_len - mtp->w) / mtp->s * mtp->m * sizeof(hash_t));
+    int hn; hash_t *h = (hash_t*)_err_malloc((seq_len - mtp->w) * sizeof(hash_t));
     int *cu_kmer_m = (int*)_err_calloc(seq_len, sizeof(int));
     if ((hn = build_kmer_hash(bseq, seq_len, mtp, h, cu_kmer_m)) == 0) return 0;
-    int last_m = 0;
+    int i, last_m = 0;
     for (i = 0; i < seq_len; ++i) {
         if (cu_kmer_m[i] != 0) last_m = cu_kmer_m[i];
         else cu_kmer_m[i] = last_m;
@@ -1165,15 +1170,13 @@ int hash_partition(char *seq, int seq_len, tandem_seq_t *tseq, int8_t **hit_arra
     hash_t *hit_h; int *seed_ids = (int*)_err_calloc(seq_len, sizeof(int)), seed_n;
     // int hit_n = collect_mem_hash_hit(h, hn, mtp->k, mtp->min_p, mtp->max_p, &hit_h, seed_ids, &seed_n); free(h);
     int hit_n = collect_hash_hit(h, hn, mtp->min_p, mtp->max_p, &hit_h, seed_ids, &seed_n); free(h);
-
     // dp chain
     dp_t **dp; int tot_n; chain_t *chain; int ch_m;
     int *period = (int*)_err_calloc(seq_len, sizeof(int));
     int ch_n = dp_chain(seq, bseq, seq_len, hit_h, hit_n, mtp, &dp, &tot_n, cu_kmer_m, &chain, &ch_m, period);
 
     // partition into seqs and do msa
-    seqs_msa(dp, hit_array, array_m, ch_n, chain, period, seed_n, seed_ids, seq_len, seq, bseq, tseq, mtp);
-    return 0;
+    seqs_msa(dp, ch_n, chain, period, seed_n, seed_ids, seq_len, seq, bseq, tseq, mtp);
 
     free(period);
     for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain);

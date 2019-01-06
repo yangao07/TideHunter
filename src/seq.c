@@ -74,14 +74,15 @@ uint32_t hash_shift_key(uint32_t pre_key, uint8_t *bseq, int pre_i, int cur_i, i
     return hash_key & ((1 << 2*k) - 1);
 }
 
-int get_bseq(char *seq, int seq_len, uint8_t *bseq) {
+uint8_t *get_bseq(char *seq, int seq_len) {
     int i;
+    uint8_t *bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
     for (i = 0; i < seq_len; ++i) {
         // TODO N(ambiguous base)
         // bseq[i] = hash_nt4_table[nst_nt4_table[(int)seq[i]]];
         bseq[i] = nst_nt4_table[(int)seq[i]];
     }
-    return 0;
+    return bseq;
 }
 
 char *get_rc_seq(char *seq, int seq_len) {

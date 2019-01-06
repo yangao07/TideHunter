@@ -1,37 +1,47 @@
-CC       =	gcc
+CC       =	 gcc
 CPP		 =   g++
-CFLAGS   =	-Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
-CFLAGS   =	-g -Wall -D __DEBUG__ 
-#CFLAGS   =	-g -Wall -pg
+CFLAGS   =	 -Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 CPPFLAGS =   -std=c++11
-#CPPFLAGS =   -std=c++11 -pg
-CFLAGS   +=  -D __ABPOA__
-INCLUDE  =
-LIB      =	-lm -lz -lpthread
-#PYLIB   =   -lpython2.7
-#PY_DIR = /usr/include/python2.7
 
+# for grpof
+#CFLAGS   =	 -g -Wall -pg
+#CPPFLAGS =   -std=c++11 -pg
+#PG_FLAG  =   -pg
+
+# for debug
+#CFLAGS   =	 -g -Wall -D __DEBUG__ 
+
+# use abPOA, otherwise use spoa
+CFLAGS  +=   -D __ABPOA__
+
+INCLUDE  =
+LIB      =	 -lm -lz -lpthread
+
+# edlib
 EDLIB_DIR     = ./edlib
 EDLIB_INCLUDE = ./edlib/include
 EDLIB         = $(EDLIB_DIR)/src/edlib.o
 INCLUDE      += -I$(EDLIB_INCLUDE)
 
+# abPOA
 ABPOA_DIR = ./abPOA
 ABPOA_INCLUDE = $(ABPOA_DIR)/include
 ABPOA_LIB_DIR = $(ABPOA_DIR)/lib
 ABPOALIB      = $(ABPOA_DIR)/lib/libabpoa.a
-ABPOALIB_FLAG = -L $(ABPOA_LIB_DIR) -labpoa
+ABPOALIB_FLAG = -L$(ABPOA_LIB_DIR) -labpoa
 INCLUDE      += -I$(ABPOA_INCLUDE)
 
+# ksw2
 KSW2_DIR     = ./ksw2
 KSW2_INCLUDE = ./ksw2
 INCLUDE     += -I$(KSW2_INCLUDE)
 
+# spoa
 SPOA_DIR     = ./spoa
 SPOA_INCLUDE = ./spoa/include/spoa
 SPOALIB_DIR  = $(SPOA_DIR)/build/lib
 SPOALIB      = $(SPOA_DIR)/build/lib/libspoa.a
-SPOALIB_FLAG = -L $(SPOALIB_DIR) -lspoa
+SPOALIB_FLAG = -L$(SPOALIB_DIR) -lspoa
 INCLUDE     += -I$(SPOA_INCLUDE)
 
 #TODO different -I for different .c
@@ -73,7 +83,7 @@ miniTandem: $(BIN)
 
 $(BIN): $(OBJS) $(ABPOALIB) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@ -pg
+	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
@@ -117,7 +127,7 @@ $(GDB_DEBUG): $(DSOURCE) $(ABPOALIB) $(SPOALIB) Makefile
 	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@
 
 clean:
-	rm -f $(SRC_DIR)/*.o $(KSW2_DIR)/*.o $(EDLIB) $(SPOALIB) $(ABPOALIB) $(BIN)
+	rm -f $(SRC_DIR)/*.o $(BIN)
 
 clean_debug:
 	rm -f $(GDB_DEBUG)

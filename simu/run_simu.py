@@ -20,7 +20,8 @@ model = 'CLR'  # 'CLR'
 acc_min = 0.85
 acc_max = 0.85
 
-def_read_cnt = 1000
+def_read_cnt = 100
+def_err_rate = 0.15
 read_cnts = [500, 1000, 5000, 10000]
 def_par_len = 2000  # pattern size
 par_lens = [500, 1000, 2000, 5000, 10000]  # 10000 TODO
@@ -64,7 +65,7 @@ def eval_miniTandem(fa, tr):
     ut.exec_cmd(sys.stderr, 'minimap2', '{} -a {} {} > {}'.format(minimap2, tr, out_fa, sam))
     # parse BAM
     eval_out = eval_miniTandem_sam(sam)
-    print eval_out
+    # print eval_out
     # write eval_out
 
 
@@ -80,12 +81,12 @@ def eval_trf(fa, tr):
     # parse BAM
 
 
-def get_pbsim_read(pbsim, in_fa, depth, len, out_pre, seed):
+def get_pbsim_read(pbsim, in_fa, depth, len, err, out_pre, seed):
     ut.exec_cmd(sys.stderr, 'get_pbsim_read',
-                '{} {} {} {} {} {} {} {} {} {}'.format(pbsim, in_fa, out_pre, model, depth, len, len, acc_min, acc_max, seed))
+                '{} {} {} {} {} {} {} {} {} {}'.format(pbsim, in_fa, out_pre, model, depth, len, len, 1-err, 1-err, seed))
 
 
-def pbsim_read_core(in_seq, cnt, out_fn, out_seq_pre):
+def pbsim_read_core(in_seq, cnt, err, out_fn, out_seq_pre):
     out_dir = os.path.dirname(os.path.abspath(out_fn)) + '/tmp/'
     length = len(in_seq)
 
@@ -97,7 +98,7 @@ def pbsim_read_core(in_seq, cnt, out_fn, out_seq_pre):
     with open(in_fa, 'w') as in_fp:
         in_fp.write('>seq\n{}\n'.format(in_seq))
     pbsim_pre = out_pre + '.pbsim'
-    get_pbsim_read(pbsim, in_fa, cnt, length, pbsim_pre)
+    get_pbsim_read(pbsim, in_fa, cnt, length, err, pbsim_pre)
     ut.exec_cmd(sys.stderr, 'merge_pbsim', 'cat {}*.fastq > {}.fq'.format(pbsim_pre, pbsim_pre))
     ut.exec_cmd(sys.stderr, 'fastq2fasta', '{} qa {}.fq > {}.fa'.format(fxtools, pbsim_pre, pbsim_pre))
     ut.exec_cmd(sys.stderr, 'rm', 'rm {}.fq {}*.fastq {}*.maf {}*.ref'.format(pbsim_pre, pbsim_pre, pbsim_pre, pbsim_pre))
@@ -105,7 +106,7 @@ def pbsim_read_core(in_seq, cnt, out_fn, out_seq_pre):
     ut.exec_cmd(sys.stderr, 'rm tmp', 'rm -rf {}'.format(out_dir))
 
 
-def pbsim_cat_read(in_seq, out_dir, out_fp, read_name, seed):
+def pbsim_cat_read(in_seq, err, out_dir, out_fp, read_name, seed):
     cnt = 1  # only one read is needed
     out_dir += '/tmp/'
     length = len(in_seq)
@@ -117,7 +118,7 @@ def pbsim_cat_read(in_seq, out_dir, out_fp, read_name, seed):
     with open(in_fa, 'w') as in_fp:
         in_fp.write('>seq\n{}\n'.format(in_seq))
     pbsim_pre = out_pre + '.pbsim'
-    get_pbsim_read(pbsim, in_fa, cnt, length, pbsim_pre, seed)
+    get_pbsim_read(pbsim, in_fa, cnt, length, err, pbsim_pre, seed)
     ut.exec_cmd(sys.stderr, 'merge_pbsim', 'cat {}*.fastq > {}.fq'.format(pbsim_pre, pbsim_pre))
     ut.exec_cmd(sys.stderr, 'fastq2fasta', '{} qa {}.fq > {}.fa'.format(fxtools, pbsim_pre, pbsim_pre))
     ut.exec_cmd(sys.stderr, 'rm', 'rm {}.fq {}*.fastq {}*.maf {}*.ref'.format(pbsim_pre, pbsim_pre, pbsim_pre, pbsim_pre))
@@ -181,7 +182,7 @@ def write_seq(seq='', fp=None, name=''):
     return
 
 
-def trsim_core(in_fa, out_fa='', out_dir='', cnt=def_read_cnt, plen=def_par_len, copy_num=def_copy_num,
+def trsim_core(in_fa, out_fa='', out_dir='', cnt=def_read_cnt, err=def_err_rate, plen=def_par_len, copy_num=def_copy_num,
                var_type=def_var_type, seed=0):
     fa_out_fn, tr_out_fn = '{}/{}'.format(out_dir, out_fa), '{}/{}.tr'.format(out_dir, out_fa)
     for out_fn in [fa_out_fn, tr_out_fn]:
@@ -192,18 +193,19 @@ def trsim_core(in_fa, out_fa='', out_dir='', cnt=def_read_cnt, plen=def_par_len,
         for read_i in range(cnt):
             tr_seq, unit_seq, chr, start, end = make_tr(in_fa, plen, copy_num, var_type)
             tr_name = '{}_{}_{}:{}-{}'.format(var_type, read_i, in_fa.keys()[chr], start, end)
-            pbsim_cat_read(tr_seq, out_dir, out_fp, tr_name, seed)
+            pbsim_cat_read(tr_seq, err, out_dir, out_fp, tr_name, seed)
             tr_fp.write('>{}\n{}\n'.format(tr_name, unit_seq * 2))
     return
 
 
 def main(args):
-    in_fa, sim_fa, out_dir, cnt, plen, copy_num, var_type = Fasta(args.in_fa), args.sim_out, args.out_dir, args.read_count, args.period, args.copy_num, args.var_type
+    in_fa, sim_fa, out_dir, cnt, err, plen, copy_num, var_type = \
+        Fasta(args.in_fa), args.sim_out, args.out_dir, args.read_count, args.error_rate, args.period, args.copy_num, args.var_type
     out_dir = os.path.abspath(out_dir)
     seed = args.random_seed
     # 1. simulate tandem-repeat sequence read
     sim_tr = sim_fa + '.tr'
-    trsim_core(in_fa, sim_fa, out_dir, cnt, plen, copy_num + 1, var_type, seed)
+    trsim_core(in_fa, sim_fa, out_dir, cnt, err, plen, copy_num + 1, var_type, seed)
     # 2. run miniTandem, TRF
     eval_miniTandem(out_dir+'/'+sim_fa, out_dir+'/'+sim_tr)
     eval_trf(out_dir+'/'+sim_fa, out_dir+'/'+sim_tr)
@@ -219,6 +221,7 @@ def parser_argv():
 
     sim_par = parser.add_argument_group('Simulation options')
     sim_par.add_argument('-c', '--read-count', metavar='C', type=int, default=def_read_cnt, help='Read count.')
+    sim_par.add_argument('-e', '--error-rate', metavar='E', type=float, default=def_err_rate, help='Sequencing error rate.')
     sim_par.add_argument('-p', '--period', metavar='P', type=int, default=def_par_len, help='Pattern length.')
     sim_par.add_argument('-n', '--copy-num', metavar='N', type=int, default=def_copy_num, help='Copy number.')
     sim_par.add_argument('-v', '--var-type', metavar='V', type=str, default=def_var_type, choices=var_types,
