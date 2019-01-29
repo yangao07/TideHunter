@@ -1,4 +1,5 @@
 # simulation file
+simu/pbsim/*
 simu/*
 # script
 

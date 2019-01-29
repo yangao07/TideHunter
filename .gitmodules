@@ -2,12 +2,14 @@
     path = minimap2
     url = https://github.com/lh3/minimap2.git
     ignore = dirty
+    branch = master
 [submodule "spoa"]
     path = spoa
-    url = git@github.com:rvaser/spoa.git
+    url = https://github.com/rvaser/spoa.git
     ignore = dirty
     branch = master
 [submodule "abPOA"]
 	path = abPOA
-	url = git@github.com:yangao07/abPOA.git
+	url = https://github.com/yangao07/abPOA.git
     ignore = dirty
+    branch = master
