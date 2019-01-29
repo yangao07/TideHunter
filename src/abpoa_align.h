@@ -7,7 +7,8 @@
 extern "C" {
 #endif
 
-int abpoa_msa(uint8_t *bseqs, int seq_len, int *pos, int pos_n, char *cons_seq);
+// int abpoa_msa(uint8_t *bseqs, int seq_len, int *pos, int pos_n, char *cons_seq);
+int abpoa_msa(uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq);
 
 #ifdef __cplusplus
 }

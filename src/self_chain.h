@@ -58,7 +58,9 @@ typedef struct {
 
 typedef struct {
     cell_t *cell;
-    int len;
+    int len, score;
+    int est_ch_i, est_period, est_start;
+    int max_period, min_period;
 } chain_t;
 
 typedef struct {

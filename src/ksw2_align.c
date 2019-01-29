@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-#include "ksw2.h"
+#include "../ksw2/ksw2.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,7 +50,7 @@ static void print_aln(const char *tname, const char *qname, ksw_extz_t *ez)
 static void print_cigar(int n_cigar, uint32_t *cigar) {
     if (n_cigar > 0) {
         int i;
-        puts("cigar:\t");
+        printf("cigar:\t");
         for (i = 0; i < n_cigar; ++i)
             printf("%d%c", cigar[i]>>4, "MID"[cigar[i]&0xf]);
         putchar('\n');
@@ -84,42 +84,80 @@ int *ksw2_get_xid(uint32_t *cigar, int n_cigar, const uint8_t *query, const uint
     return xid;
 }
 
+int backtrack_left_end(int n_cigar, uint32_t *cigar, int qlen, int tlen, int q_left_ext) {
+    int t_left_ext = 0, i, j, op, len;
+    int q_remain_len = q_left_ext;
+    for (i = n_cigar-1; i >=0; --i) {
+        op = cigar[i] & 0xf; len = cigar[i] >> 4;
+        if (op == 0) { // MATCH/MISMATCH
+            if (len >= q_remain_len) {
+                t_left_ext += q_remain_len;
+                return t_left_ext;
+            } else {
+                t_left_ext += len;
+                q_remain_len -= len;
+            }
+        } else if (op == 1) { // INSERTION
+            if (len >= q_remain_len) {
+                return t_left_ext;
+            } else {
+                q_remain_len -= len;
+            }
+        } else if (op == 2) { // DELETION
+            t_left_ext += len;
+        }
+    }
+    if (q_remain_len > 0) {
+        err_fatal_simple("Error: unmatched cigar and q_left_ext.\n");
+    }
+    return t_left_ext;
+}
 int ksw2_global(const uint8_t *query, int qlen, const uint8_t *target, int tlen) {
-    // print_seq(query, qlen, target, tlen);
-    ksw_gen_simple_mat(5, mat, match, mis);
-    int iden_n = 0; void *km = 0;
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
-    int w=-1, m_cigar=0, n_cigar=0; uint32_t *cigar=0;
-    ksw_gg2_sse(km, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, &m_cigar, &n_cigar, &cigar);
-    // print_cigar(n_cigar, cigar);
-    int *xid = ksw2_get_xid(cigar, n_cigar, query, target);
-    if (xid != 0) {
-        iden_n = xid[0];
-        free(xid);
-    }
-    free(cigar);
-    return iden_n;
-}
-
-int ksw2_ext(const uint8_t *query, int qlen, const uint8_t *target, int tlen) {
-    // print_seq(query, qlen, target, tlen);
-    // ksw_gen_simple_mat(5, mat, match, mis);
-    int iden_n = 0; void *km = 0;
-    ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
-    int w=-1, zdrop=-1, flag=KSW_EZ_RIGHT;
-    ksw_extz2_sse(km, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, 0, flag, &ez);
-    // print_aln("target", "query", &ez);
+    int w=-1, zdrop=-1, end_bonus=0, flag = 0;
+    ksw_extz2_sse(0, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
+    #ifdef __DEBUG__
+    print_cigar(ez.n_cigar, ez.cigar);
+    #endif
     int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, query, target);
+    int iden_n = 0;
     if (xid != 0) {
         iden_n = xid[0];
         free(xid);
     }
-    return iden_n;
+    if (ez.cigar) free(ez.cigar);
+    return iden_n; 
 }
 
-int ksw2_left_ext(const uint8_t *query, int qlen, const uint8_t *target, int tlen) {
-    // print_seq(query, qlen, target, tlen);
-    // ksw_gen_simple_mat(5, mat, match, mis);
+// TODO use extz2_sse
+int ksw2_global_with_cigar(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *n_cigar, uint32_t **cigar) {
+    ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
+    int w=-1, zdrop=-1, end_bonus=0, flag = 0;
+    ksw_extz2_sse(0, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
+    #ifdef __DEBUG__
+    print_cigar(ez.n_cigar, ez.cigar);
+    #endif
+    int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, query, target);
+    int iden_n = 0;
+    if (xid != 0) {
+        iden_n = xid[0];
+        free(xid);
+    }
+    *n_cigar = ez.n_cigar;
+    *cigar = ez.cigar;
+    // if (ez.cigar) free(ez.cigar);
+    return iden_n; 
+}
+
+void ksw2_right_ext(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *max_q, int *max_t) {
+    int iden_n = 0; void *km = 0;
+    ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
+    int w=-1, zdrop=-1, flag = KSW_EZ_EXTZ_ONLY | KSW_EZ_SCORE_ONLY;
+    ksw_extz2_sse(km, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, 0, flag, &ez);
+    *max_q = ez.max_q, *max_t = ez.max_t;
+}
+
+void ksw2_left_ext(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *max_q, int *max_t) {
     uint8_t *rquery = (uint8_t*)_err_malloc(qlen * sizeof(uint8_t));
     uint8_t *rtarget = (uint8_t*)_err_malloc(tlen * sizeof(uint8_t));
     int i, iden_n = 0; void *km = 0;
@@ -127,15 +165,60 @@ int ksw2_left_ext(const uint8_t *query, int qlen, const uint8_t *target, int tle
     for (i = 0; i < tlen; ++i) rtarget[i] = target[tlen-i-1];
 
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
-    int w=-1, zdrop=-1, flag=KSW_EZ_RIGHT; 
+    int w=-1, zdrop=-1, flag = KSW_EZ_EXTZ_ONLY | KSW_EZ_SCORE_ONLY;
     ksw_extz2_sse(km, qlen, rquery, tlen, rtarget, 5, mat, gap_open, gap_ext, w, zdrop, 0, flag, &ez);
-    // print_aln("target", "query", &ez);
-    int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, rquery, rtarget);
+    *max_q = ez.max_q, *max_t = ez.max_t;
+    free(rquery); free(rtarget);
+}
+
+// return target_right_ext_end and query_right_ext_end
+//                |: target_end
+//|-----target-------
+//|-----query-----|
+int ksw2_right_extend(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *mqe_tlen) {
+    ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
+    int w=-1, zdrop=-1, end_bonus=0, flag = KSW_EZ_RIGHT | KSW_EZ_EXTZ_ONLY;
+    ksw_extz2_sse(0, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
+    #ifdef __DEBUG__
+    printf("max_q: %d, max_t: %d, qlen: %d, tlen: %d\n", ez.max_q, ez.max_t, qlen, tlen);
+    print_cigar(ez.n_cigar, ez.cigar);
+    #endif
+    int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, query, target);
+    int iden_n = 0;
     if (xid != 0) {
         iden_n = xid[0];
         free(xid);
     }
-    free(rquery); free(rtarget); free(ez.cigar);
+    *mqe_tlen = ez.mqe_t + 1;
+    if (ez.cigar) free(ez.cigar);
+    return iden_n;
+}
+
+// return target_left_ext_end and query_left_ext_end
+//  |: target_end
+//-------target-----|
+//  |-----query-----|
+int ksw2_left_extend(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *mqe_tlen) {
+    uint8_t *rquery = (uint8_t*)_err_malloc(qlen * sizeof(uint8_t));
+    uint8_t *rtarget = (uint8_t*)_err_malloc(tlen * sizeof(uint8_t));
+    int i; ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
+    for (i = 0; i < qlen; ++i) rquery[i] = query[qlen-i-1];
+    for (i = 0; i < tlen; ++i) rtarget[i] = target[tlen-i-1];
+    int w=-1, zdrop=-1, end_bonus=0, flag=KSW_EZ_RIGHT | KSW_EZ_EXTZ_ONLY;
+    ksw_extz2_sse(0, qlen, rquery, tlen, rtarget, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
+    #ifdef __DEBUG__
+    printf("max_q: %d, max_t: %d, qlen: %d, tlen: %d\n", ez.max_q, ez.max_t, qlen, tlen);
+    print_cigar(ez.n_cigar, ez.cigar);
+    #endif
+    int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, rquery, rtarget);
+    int iden_n = 0;
+    if (xid != 0) {
+        iden_n = xid[0];
+        free(xid);
+    }
+    *mqe_tlen = ez.mqe_t + 1;
+    if (ez.cigar) free(ez.cigar);
+    free(rquery); free(rtarget);
     return iden_n;
 }
 

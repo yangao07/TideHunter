@@ -1,3 +1,7 @@
+# simulation file
+simu/*
+# script
+
 # pycharm file
 simu/*pyc
 # Object files
@@ -46,5 +50,9 @@ bin/*
 data/*
 
 #tags
+.tags
 tags
 cscope.*
+src/.tags
+src/tags
+src/cscope*

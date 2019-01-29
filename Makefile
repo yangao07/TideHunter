@@ -3,13 +3,14 @@ CPP		 =   g++
 CFLAGS   =	 -Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 CPPFLAGS =   -std=c++11
 
-# for grpof
-#CFLAGS   =	 -g -Wall -pg
-#CPPFLAGS =   -std=c++11 -pg
-#PG_FLAG  =   -pg
-
 # for debug
-#CFLAGS   =	 -g -Wall -D __DEBUG__ 
+ifneq ($(gdb),)
+	CFLAGS   =	 -g -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -D __DEBUG__ 
+endif
+# for gprof
+ifneq ($(pg),)
+	PG_FLAG  =   -pg
+endif
 
 # use abPOA, otherwise use spoa
 CFLAGS  +=   -D __ABPOA__
@@ -23,6 +24,13 @@ EDLIB_INCLUDE = ./edlib/include
 EDLIB         = $(EDLIB_DIR)/src/edlib.o
 INCLUDE      += -I$(EDLIB_INCLUDE)
 
+# SIMD
+FLAG_SSE4       = -msse4
+FLAG_AVX2       = -mavx2
+FLAG_AVX512F    = -mavx512f
+FLAG_AVX512BW   = -mavx512bw
+SIMD_FLAG       = -msse
+
 # abPOA
 ABPOA_DIR = ./abPOA
 ABPOA_INCLUDE = $(ABPOA_DIR)/include
@@ -30,11 +38,33 @@ ABPOA_LIB_DIR = $(ABPOA_DIR)/lib
 ABPOALIB      = $(ABPOA_DIR)/lib/libabpoa.a
 ABPOALIB_FLAG = -L$(ABPOA_LIB_DIR) -labpoa
 INCLUDE      += -I$(ABPOA_INCLUDE)
+ABPOA_SIMD_FLAG =
 
 # ksw2
+# TODO flag with sse
 KSW2_DIR     = ./ksw2
 KSW2_INCLUDE = ./ksw2
 INCLUDE     += -I$(KSW2_INCLUDE)
+KSW2_SIMD_FLAG = -msse4.1
+
+ifneq ($(sse2),)
+	KSW2_SIMD_FLAG = -msse2 -mno-sse4.1
+	ABPOA_SIMD_FLAG = "sse2=1"
+else ifneq ($(sse41),)
+	KSW2_SIMD_FLAG = -msse4.1
+	ABPOA_SIMD_FLAG = "sse41=1"
+else ifneq ($(avx2),)
+	KSW2_SIMD_FLAG = -msse4.1
+	ABPOA_SIMD_FLAG = "avx2=1"
+else ifneq ($(avx512f),)
+	KSW2_SIMD_FLAG = -msse4.1
+	ABPOA_SIMD_FLAG = "avx512f=1"
+else ifneq ($(avx512bw),)
+	KSW2_SIMD_FLAG = -msse4.1
+	ABPOA_SIMD_FLAG = "avx512bw=1"
+endif
+
+
 
 # spoa
 SPOA_DIR     = ./spoa
@@ -45,7 +75,6 @@ SPOALIB_FLAG = -L$(SPOALIB_DIR) -lspoa
 INCLUDE     += -I$(SPOA_INCLUDE)
 
 #TODO different -I for different .c
-
 BIN_DIR =	./bin
 SRC_DIR =   ./src
 
@@ -60,12 +89,10 @@ DSOURCE = $(SOURCE)
 OBJS    = $(CSOURCE:.c=.o) $(CPPSOURCE:.cpp=.o)
 #OBJS   += $(EDLIB)
 
-BIN     =	$(BIN_DIR)/miniTandem
-
-#GDB_DEBUG   = $(BIN_DIR)/gdb_miniTandem
-#ALL_GDB_DEBUG = $(BIN_DIR)/gdb_all_miniTandem
-DMARCRO 	= -D __DEBUG__
-ALL_HIT     = -D __ALL_HIT__ 
+BIN     =	$(BIN_DIR)/TideHunter
+ifneq ($(gdb),)
+	BIN     =	$(BIN_DIR)/gdb_TideHunter
+endif
 
 # dependencies
 .c.o:
@@ -74,12 +101,8 @@ ALL_HIT     = -D __ALL_HIT__
 .cpp.o:
 	$(CPP) -c $(CPPFLAGS) $(INCLUDE) $< -o $@
 
-
 all:		$(MINMAP2LIB) $(BIN) 
-miniTandem: $(BIN)
-#gdb_miniTandem: $(SOURCE) $(GDB_DEBUG) 
-#gdb_all_miniTandem: $(SOURCE) $(ALL_GDB_DEBUG) 
-
+TideHunter: $(BIN)
 
 $(BIN): $(OBJS) $(ABPOALIB) $(SPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
@@ -96,8 +119,15 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 $(ABPOALIB): 
 	wd=$(PWD); \
 	cd $(ABPOA_DIR); \
-	make simd_check; make libabpoa; \
+	make simd_check; make libabpoa $(ABPOA_SIMD_FLAG); \
 	cd $(wd);
+
+# ksw2
+$(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
+	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $< -o $@
+
+$(KSW2_DIR)/ksw2_gg2_sse.o: $(KSW2_DIR)/ksw2_gg2_sse.c $(KSW2_DIR)/ksw2.h
+	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $< -o $@
 
 # spoa
 $(SPOALIB): 
@@ -117,22 +147,28 @@ $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
 $(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPOALIB)
 	$(CPP) -c $< $(CPPFLAGS) -I $(SPOA_INCLUDE) -o $@
 
-
-$(ALL_GDB_DEBUG): $(DSOURCE) $(SPOALIB) Makefile
-	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(ALL_HIT) $(INCLUDE) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@
-
-$(GDB_DEBUG): $(DSOURCE) $(ABPOALIB) $(SPOALIB) Makefile
-	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CPPFLAGS) $(DFLAGS) $(DSOURCE) $(DMARCRO) $(INCLUDE) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@
-
 clean:
 	rm -f $(SRC_DIR)/*.o $(BIN)
 
-clean_debug:
-	rm -f $(GDB_DEBUG)
+clean_abPOA:
+	wd=$(PWD);	\
+	rm -f $(ABPOALIB); \
+	cd $(ABPOA_DIR); make clean; \
+	cd $(wd);
 
+clean_ksw2:
+	rm $(KSW2_DIR)/*.o
 
+clean_spoa:
+	wd=$(PWD); \
+	rm $(SPOALIB);	\
+	cd $(SPOA_DIR)/build; make clean;	\
+	cd $(wd);
+
+clean_edlib:
+	rm $(EDLIB)
+
+clean_all: clean clean_abPOA clean_ksw2 clean_edlib clean_spoa
 
 $(SRC_DIR)/seq.o: $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
 $(SRC_DIR)/self_chain.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h 
