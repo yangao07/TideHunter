@@ -52,7 +52,7 @@ static int usage(void)
     err_printf("         -k --kmer-length [INT]    k-mer length (no larger than 16). [%d]\n", KMER_SIZE); // TODO largest kmer len
     err_printf("         -w --window-size [INT]    window size. [%d]\n", KMER_WSIZE);
     err_printf("         -s --step-size   [INT]    step size. [%d]\n", KMER_SSIZE);
-    err_printf("         -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
+    //err_printf("         -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
     err_printf("         -H --HPC-kmer             use homopolymer-compressed k-mer. [False]\n");
 
     // TODO min_copy < 2 ???
@@ -66,10 +66,9 @@ static int usage(void)
 
     err_printf("         -l --longest              only output the consensus of the longest tandem repeat. [False]\n");
     err_printf("         -O --cons-out    [STR]    output consensus sequence in FASTA format. [stdout]\n");
-    err_printf("         -E --eval-out    [STR]    evaluation detailed information. [NULL]\n");
-    err_printf("         -S --splint-seq  [STR]    splint sequence in FASTA/FASTQ format. [NULL]\n");
-    err_printf("         -d --detail-out  [STR]    detailed information of each consensus. [NULL]\n");
-    err_printf("                                   (start, end, score, etc.)\n");
+    //err_printf("         -S --splint-seq  [STR]    splint sequence in FASTA/FASTQ format. [NULL]\n");
+    //err_printf("         -d --detail-out  [STR]    detailed information of each consensus. [NULL]\n");
+    //err_printf("                                   (start, end, score, etc.)\n");
 
 	err_printf("\n");
 	return 1;
