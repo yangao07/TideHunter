@@ -56,7 +56,7 @@ Options:
          -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [0.25]
          -p --min-period  [INT]    minimum period size of tandem repeat. (>=2) [30]
          -P --max-period  [INT]    maximum period size of tandem repeat. (<=65535) [65535]
-         -l --only-longest         only output consensus that spans the longest region. [False]
+         -l --longest              only output the consensus of the longest tandem repeat. [False]
          -O --cons-out    [STR]    output consensus sequence in FASTA format. [stdout]
 
 ```

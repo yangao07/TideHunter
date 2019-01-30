@@ -26,7 +26,7 @@ const struct option mini_tandem_opt [] = {
     { "max-period", 1, NULL, 'P' },
 
     { "rep-range", 1, NULL, 'r' },
-    { "only-longest", 0, NULL, 'l'},
+    { "longest", 0, NULL, 'l'},
     { "cons-out", 1, NULL, 'O'},
     { "splint-seq", 1, NULL, 'S' },
     { "five-prime", 1, NULL, '5' },
@@ -66,7 +66,7 @@ static int usage(void)
 //  err_printf("         -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
 //  err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
 
-    err_printf("         -l --only-longest         only output consensus that spans the longest region. [False]\n");
+    err_printf("         -l --longest              only output the consensus of the longest tandem repeat. [False]\n");
     err_printf("         -O --cons-out    [STR]    output consensus sequence in FASTA format. [stdout]\n");
     err_printf("         -E --eval-out    [STR]    evaluation detailed information. [NULL]\n");
     err_printf("         -S --splint-seq  [STR]    splint sequence in FASTA/FASTQ format. [NULL]\n");
