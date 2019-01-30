@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "utils.h"
-#include "../ksw2/ksw2.h"
+#include "ksw2.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,11 +29,13 @@ static void ksw_gen_simple_mat(int m, int8_t *mat, int8_t a, int8_t b)
 	for (j = 0; j < m; ++j)
 		mat[(m - 1) * m + j] = 0;
 }
+
 static void print_seq(const uint8_t *query, int qlen, const uint8_t *target, int tlen) {
     int i;
     printf("Query:  "); for (i = 0; i <qlen; ++i) putchar("ACGT"[query[i]]); putchar('\n');
     printf("Target: "); for (i = 0; i <tlen; ++i) putchar("ACGT"[target[i]]); putchar('\n');
 }
+
 static void print_aln(const char *tname, const char *qname, ksw_extz_t *ez)
 {
 	printf("%s\t%s\t%d", tname, qname, ez->score);
@@ -56,7 +58,6 @@ static void print_cigar(int n_cigar, uint32_t *cigar) {
         putchar('\n');
     }
 }
-
 
 int *ksw2_get_xid(uint32_t *cigar, int n_cigar, const uint8_t *query, const uint8_t *target) {
     int i, j, *xid = (int*)_err_calloc(4, sizeof(int));
@@ -112,6 +113,7 @@ int backtrack_left_end(int n_cigar, uint32_t *cigar, int qlen, int tlen, int q_l
     }
     return t_left_ext;
 }
+
 int ksw2_global(const uint8_t *query, int qlen, const uint8_t *target, int tlen) {
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
     int w=-1, zdrop=-1, end_bonus=0, flag = 0;
@@ -225,5 +227,3 @@ int ksw2_left_extend(const uint8_t *query, int qlen, const uint8_t *target, int 
 #ifdef __cplusplus
 }
 #endif
-
-

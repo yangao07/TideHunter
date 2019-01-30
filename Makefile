@@ -170,11 +170,14 @@ clean_edlib:
 
 clean_all: clean clean_abPOA clean_ksw2 clean_edlib clean_spoa
 
-$(SRC_DIR)/seq.o: $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
-$(SRC_DIR)/self_chain.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h 
-$(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/mini_tandem.h
-$(SRC_DIR)/mini_tandem.o: $(SRC_DIR)/mini_tandem.h $(SRC_DIR)/self_chain.h $(SRC_DIR)/seq.h $(SRC_DIR)/utils.h
-$(SRC_DIR)/utils.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h
-$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/utils.h $(SRC_DIR)/spoa_align.h
+$(SRC_DIR)/gen_cons.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/ksw2_align.h $(SRC_DIR)/spoa_align.h
 $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/utils.h
+$(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/kseq.h
+$(SRC_DIR)/partition.o: $(SRC_DIR)/utils.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/ksw2_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/tandem_chain.h
+$(SRC_DIR)/seq.o: $(SRC_DIR)/utils.h $(SRC_DIR)/seq.h
+$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/utils.h $(SRC_DIR)/spoa_align.h
+$(SRC_DIR)/tandem_chain.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h
+$(SRC_DIR)/tandem_hit.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h $(SRC_DIR)/tandem_hit.h
+$(SRC_DIR)/tide_hunter.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h $(SRC_DIR)/partition.h $(SRC_DIR)/gen_cons.h $(SRC_DIR)/seq.h
+$(SRC_DIR)/utils.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h

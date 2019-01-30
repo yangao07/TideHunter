@@ -1,20 +1,12 @@
-#ifndef SELF_CHAIN_H
-#define SELF_CHAIN_H
-
-#include "mini_tandem.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#ifndef TANDEM_HIT_H
+#define TANDEM_HIT_H
+#include <stdint.h>
+#include "tide_hunter.h"
 
 typedef int64_t hash_t;
 #define _8mask 0xff
 #define _16mask 0xffff
 #define _32mask 0xffffffff
-
-typedef struct {
-    int i:32, j:32;
-} cell_t;
 
 // TODO total_hits_of_kmer: used as weight of kmer
 // hash_hit1: period:32 | end:32
@@ -33,7 +25,6 @@ typedef struct {
 #define _get_mem_hash_hit_start(hash_hit, i) (_get_mem_hash_hit_end((hash_hit), i) - _get_mem_hash_hit_period((hash_hit), i))
 #define _get_mem_hash_hit_meml(hash_hit, i) ((hash_hit)[i] & _16mask)
 
-
 #define _get_hash_hit_end(hash_hit, i) ((hash_hit)[i] >> 32)
 #define _get_hash_hit_period(hash_hit, i) (((hash_hit)[i] & _32mask) >> 16)
 #define _get_hash_hit_seed_id(hash_hit, i) ((hash_hit)[i] & _16mask)
@@ -41,36 +32,11 @@ typedef struct {
 
 #define _set_hash_hit(start, end, hi) (((end) << 32) | (((end)-(start)) << 16) | hi)
 
-typedef struct {
-    int32_t x,y,z;
-} triple_t;
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-typedef struct {
-    int i:32, j:32;
-    int score;
-} dp_score_t;
-
-typedef struct {
-    int from_i, from_j; // i : index of end postion, j : index of hit of end
-    int start, end, mem_l; int score;
-    int8_t is_tracked;
-} dp_t;
-
-typedef struct {
-    cell_t *cell;
-    int len, score;
-    int est_ch_i, est_period, est_start;
-    int max_period, min_period;
-} chain_t;
-
-typedef struct {
-    int start, end;
-} rep_reg_t;
-
-//void radix_sort_hash(hash_t *beg, hash_t *end);
-
-int hash_partition(char *seq, int seq_len, tandem_seq_t *tandem_seq, mini_tandem_para *mtp);
-int mini_tandem_core(kseq_t *read_seq, tandem_seq_t *tandem_seq, mini_tandem_para *mtp);
+int collect_tandem_repeat_hit(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t **hit_h);
 
 #ifdef __cplusplus
 }

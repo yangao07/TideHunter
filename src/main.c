@@ -3,11 +3,9 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <math.h>
-#include "mini_tandem.h"
-#include "self_chain.h"
+#include "tide_hunter.h"
 #include "utils.h"
 #include "kseq.h"
-#include "seq.h"
 
 const char PROG[20] = "TideHunter";
 const char VERSION[20] = "1.0.0";
@@ -134,7 +132,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
     for (seq_i = 0; seq_i < n_seqs; ++seq_i) {
         _tseq = tseq + seq_i;
         for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start,end
-            fprintf(mtp->cons_out, ">%s_cons%d_%d:%d:%d:%d:%.1f\n", (read_seq+seq_i)->name.s, cons_i, (read_seq+seq_i)->seq.l,  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i]);//, _tseq->splint_rotated[cons_i]);
+            fprintf(mtp->cons_out, ">%s_cons%d_%d:%d:%d:%d:%.1f\n", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i]);//, _tseq->splint_rotated[cons_i]);
             cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
             for (i = cons_seq_start; i < cons_seq_end; ++i)  fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
             cons_seq_start += _tseq->cons_len[cons_i];
@@ -161,7 +159,7 @@ static void *mini_tandem_thread_main(void *aux)
         kseq_t *read_seq = a->read_seq + i; 
         tandem_seq_t *tandem_seq = a->tseq + i;
         // generate cons_seq from seq , cons_seq may have multiple seqs
-        mini_tandem_core(read_seq, tandem_seq, mtp);
+        tide_hunter_core(read_seq, tandem_seq, mtp);
     }
     return aux;
 }

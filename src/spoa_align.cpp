@@ -1,8 +1,6 @@
 #include <string.h>
-//#include <iostream>
 #include "utils.h"
 #include "spoa.hpp"
-//#include "spoa_align.h"
 
 extern "C" {
     int spoa_msa(char **seqs, int seq_n, char *cons_seq) {

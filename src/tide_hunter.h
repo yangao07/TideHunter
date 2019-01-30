@@ -54,6 +54,7 @@ typedef struct {
 
 
 int mini_tandem(const char *read_fn, mini_tandem_para *mtp);
+int tide_hunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp);
 
 mini_tandem_para *mini_tandem_init_para(void);
 
