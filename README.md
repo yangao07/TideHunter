@@ -83,7 +83,7 @@ Options:
          -3 --three-prime [STR]    3' adapter sequence (anti-sense strand). [NULL]
          -a --ada-mat-rat [FLT]    minimum match ratio of adapter sequence. [0.80]
     Output:
-         -o --cons-out    [STR]    output consensus sequence in FASTA format. [stdout]
+         -o --cons-out    [STR]    output file. [stdout]
          -l --longest              only output the consensus of the longest tandem repeat. [False]
          -F --full-len             only output the consensus that is full-length. [False]
          -f --out-fmt     [INT]    output format. [1]
