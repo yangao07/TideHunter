@@ -85,7 +85,6 @@ int *partition_seqs_core(char *seq, int seq_len, int8_t *hit_array, int est_peri
 }
 
 // TODO when (s2) >> (e1), i.e., anchor are too sparse
-// TODO Extend by non-full copy, more than one copy
 // start with est_start anchor?
 int *get_partition_pos_with_global_alignment(uint8_t *bseq, int seq_len, dp_t **dp, chain_t ch, mini_tandem_para *mtp, int *par_n) {
     int est_ch_i = ch.est_ch_i, est_start = ch.est_start, est_period = ch.est_period;
@@ -127,7 +126,6 @@ int *get_partition_pos_with_global_alignment(uint8_t *bseq, int seq_len, dp_t **
                 break;
             }
         }
-
     }
     // reverse par_pos
     for (i = 0; i < (*par_n)>> 1; ++i) {
@@ -182,7 +180,6 @@ int *get_partition_pos_with_narrow_global_alignment(uint8_t *bseq, int seq_len, 
     // find upstream anchor (s1, e1) and downstream (s2, e2)
     // global alignment of [s1,s2] and [e1, e2]
     // find best partition position by backtracking
-    // TODO overlapped hits => partition directly without alignment
 
     // left extension: find S
     // <=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=<=
@@ -226,7 +223,6 @@ int *get_partition_pos_with_narrow_global_alignment(uint8_t *bseq, int seq_len, 
                 s2 = s1; e2 = e1;
             }
         }
-
     }
     // reverse par_pos
     for (i = 0; i < (*par_n)>> 1; ++i) {

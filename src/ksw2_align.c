@@ -131,7 +131,6 @@ int ksw2_global(const uint8_t *query, int qlen, const uint8_t *target, int tlen)
     return iden_n; 
 }
 
-// TODO use extz2_sse
 int ksw2_global_with_cigar(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *n_cigar, uint32_t **cigar) {
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
     int w=-1, zdrop=-1, end_bonus=0, flag = 0;

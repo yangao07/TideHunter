@@ -35,7 +35,7 @@ static inline uint64_t inv_hash64(uint64_t key, uint64_t mask)
 
 // hash: kmer-key | rightmost-pos
 int direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
-    int c, l, hi=0, pos, key; uint32_t mask = (1 << 2*k) - 1;
+    int c, l, hi=0, pos; uint32_t key, mask = ((uint64_t)1 << 2*k) - 1;
 
     for (key = l = pos = 0; pos < seq_len; ++pos) {
         c = bseq[pos];
@@ -63,7 +63,7 @@ int direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h
 }
 
 int overlap_direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
-    int c, l, hi=0, pos; uint32_t key, mask = (1 << 2*k) - 1;
+    int c, l, hi=0, pos; uint32_t key, mask = ((uint64_t)1 << 2*k) - 1;
 
     for (key = pos = l = 0; pos < seq_len; ++pos) {
         c = bseq[pos];
@@ -91,7 +91,7 @@ int overlap_direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, h
 // non_overlap: no need to use buffer to store previous kmer hash values
 int non_overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
     int c, l, j, pos, min_pos, hi=0;
-    uint32_t key, minimizer, hash_value, mask = (1 << 2*k) - 1;
+    uint32_t key, minimizer, hash_value, mask = ((uint64_t)1 << 2*k) - 1;
     int *equal_min_pos = (int*)_err_malloc(w * sizeof(int)), equal_n;
 
     minimizer = UINT32_MAX; equal_n = 0;
@@ -155,7 +155,7 @@ typedef struct { uint32_t x, y; } u64_t;
 int overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
     int i, l, c, hi = 0;
     int pos, buf_pos, min_buf_pos, last_min_buf_pos=-1, equal_n, *equal_min_pos = (int*)_err_malloc(w * sizeof(int));
-    uint32_t key, mask = (1 << 2*k) - 1; 
+    uint32_t key, mask = ((uint64_t)1 << 2*k) - 1; 
     u64_t buf[256], minimizer, tmp;
 
     key = 0; minimizer.x = UINT32_MAX; equal_n = 0; min_buf_pos = -2;
@@ -261,7 +261,6 @@ int build_kmer_hash(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h
     return 0;
 }
 
-// TODO remove mem_l, it is unnecessary
 // TODO use multiple-hit seeds that connects multiple-repeats (n>2)
 // discard too close hit, search further hit
 // 0. h: hash_value | position

@@ -79,7 +79,8 @@ int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, in
     if (result.status == EDLIB_STATUS_OK) {
         ed = result.editDistance, *start = result.startLocations[0], *end = result.endLocations[0];
 #ifdef __DEBUG__
-        printf("Edlib-HW: %d, %d, %d\n", result.editDistance, result.startLocations[0], result.endLocations[0]);
+        // int i;
+        // for (i = 0; i < result.numLocations; ++i) printf("Edlib-HW: %d, %d, %d\n", result.editDistance, result.startLocations[i], result.endLocations[i]);
 #endif
     }
     edlibFreeAlignResult(result);
@@ -125,14 +126,14 @@ int edlib_align_UHW(char *query, int qlen, char *target, int tlen) {
 #ifdef _EDLIB_ALIGN_MAIN
 int main(void) {
     int start, end, ed, iden_n;
-    char str1[100] = "AAAAAAA";
-    char str2[100] = "AAAACCGTCGATAACAACCAAA";
-    iden_n = edlib_align_NW(str1, strlen(str1), str2, strlen(str2));
-    printf("iden_n : %d\n", iden_n);
+    char str1[100] = "TTTTTTT"; //"CCGTCG";
+    char str2[100] = "AAAACCGTCGATAACAACCAAACCGGTCG";
+    // iden_n = edlib_align_NW(str1, strlen(str1), str2, strlen(str2));
+    // printf("iden_n : %d\n", iden_n);
     // iden_n = edlib_align_SHW(str1, strlen(str1), str2, strlen(str2));
     // printf("iden_n : %d\n", iden_n);
     ed = edlib_align_HW(str1, strlen(str1), str2, strlen(str2), &start, &end);
-    printf("ed: %d, start: %d, end: %d\n", ed, start, end);
+    // printf("ed: %d, start: %d, end: %d\n", ed, start, end);
     return 0;
 }
 #endif

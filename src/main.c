@@ -15,7 +15,7 @@ const struct option mini_tandem_opt [] = {
     { "kmer-length", 1, NULL, 'k' },
     { "window-size", 1, NULL, 'w' },
     { "step-size", 1, NULL, 's' },
-    { "minimal-m", 1, NULL, 'm' },
+    // { "minimal-m", 1, NULL, 'm' },
     { "HPC-kmer", 0, NULL, 'H' },
 
     { "min-copy", 1, NULL, 'c' },
@@ -23,13 +23,18 @@ const struct option mini_tandem_opt [] = {
     { "min-period", 1, NULL, 'p' },
     { "max-period", 1, NULL, 'P' },
 
-    { "rep-range", 1, NULL, 'r' },
-    { "longest", 0, NULL, 'l'},
-    { "cons-out", 1, NULL, 'O'},
-    { "splint-seq", 1, NULL, 'S' },
+    // { "rep-range", 1, NULL, 'r' },
+
+    // { "splint-seq", 1, NULL, 'S' },
     { "five-prime", 1, NULL, '5' },
     { "three-prime", 1, NULL, '3' },
-    { "detail-out", 1, NULL, 'd' },
+    { "ada-match-rat", 1, NULL, 'a' },
+
+    { "cons-out", 1, NULL, 'o' },
+    { "longest", 0, NULL, 'l' },
+    { "full-len", 0, NULL, 'l' },
+    { "out-fmt", 1, NULL, 'f' },
+    // { "detail-out", 1, NULL, 'd' },
 
     { "thread", 1, NULL, 't' },
     { 0, 0, 0, 0}
@@ -48,13 +53,16 @@ static int usage(void)
     err_printf("Usage:   %s [options] in.fa/fq > cons.fa\n\n", PROG);
 
 	err_printf("Options: \n");
-    err_printf("         -t --thread      [INT]    number of threads to use. [%d]\n", THREAD_N);
-    err_printf("         -k --kmer-length [INT]    k-mer length (no larger than 16). [%d]\n", KMER_SIZE); // TODO largest kmer len
+	err_printf("    Seeding:\n");
+    err_printf("         -k --kmer-length [INT]    k-mer length (no larger than %d). [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
     err_printf("         -w --window-size [INT]    window size. [%d]\n", KMER_WSIZE);
     err_printf("         -s --step-size   [INT]    step size. [%d]\n", KMER_SSIZE);
     //err_printf("         -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
     err_printf("         -H --HPC-kmer             use homopolymer-compressed k-mer. [False]\n");
 
+	//err_printf("\n");
+
+	err_printf("    Tandem repeat criteria:\n");
     // TODO min_copy < 2 ???
     err_printf("         -c --min-copy    [INT]    minimum copy number of tandem-repeats. [%d]\n", MIN_COPY);
     err_printf("         -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [%.2f]\n", MAX_DIV);
@@ -63,12 +71,30 @@ static int usage(void)
 
 //  err_printf("         -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
 //  err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
+	//err_printf("\n");
 
+	err_printf("    Adapter sequence:\n");
+    err_printf("         -5 --five-prime  [STR]    5' adapter sequence (sense strand). [NULL]\n");
+    err_printf("         -3 --three-prime [STR]    3' adapter sequence (anti-sense strand). [NULL]\n");
+    err_printf("         -a --ada-mat-rat [FLT]    minimum match ratio of adapter sequence. [%.2f]\n", ADA_MATCH_RAT);
+
+	//err_printf("\n");
+
+	err_printf("    Output:\n");
+    err_printf("         -o --cons-out    [STR]    output consensus sequence in FASTA format. [stdout]\n");
     err_printf("         -l --longest              only output the consensus of the longest tandem repeat. [False]\n");
-    err_printf("         -O --cons-out    [STR]    output consensus sequence in FASTA format. [stdout]\n");
+    err_printf("         -F --full-len             only output the consensus that is full-length. [False]\n");
+    err_printf("         -f --out-fmt     [INT]    output format. [%d]\n", FASTA_FMT);
+    err_printf("                                       %d: FASTA\n", FASTA_FMT);
+    err_printf("                                       %d: Tabular\n", TAB_FMT);
     //err_printf("         -S --splint-seq  [STR]    splint sequence in FASTA/FASTQ format. [NULL]\n");
     //err_printf("         -d --detail-out  [STR]    detailed information of each consensus. [NULL]\n");
     //err_printf("                                   (start, end, score, etc.)\n");
+
+	//err_printf("\n");
+
+	err_printf("    Computing resource:\n");
+    err_printf("         -t --thread      [INT]    number of threads to use. [%d]\n", THREAD_N);
 
 	err_printf("\n");
 	return 1;
@@ -86,7 +112,7 @@ int get_seq_from_fx(gzFile fp, char **seq) {
         free(read_seq); ks_destroy(fs);
         return len;
     } else {
-        err_func_format_printf(__func__, "Warning: No splint sequence found.\n");
+        err_func_format_printf(__func__, "No sequence found.\n");
         return 0;
     }
 }
@@ -123,17 +149,23 @@ int COUNT=0;
 int THREAD_READ_I;
 pthread_rwlock_t RWLOCK;
 
-// 1. output cons.fastq
-// TODO // 2. output cons.info
+// TODO cons.fastq
 void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
     int i, seq_i, cons_i, cons_seq_start = 0, cons_seq_end = 0;
     tandem_seq_t *_tseq;
     for (seq_i = 0; seq_i < n_seqs; ++seq_i) {
         _tseq = tseq + seq_i;
         for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start,end
-            fprintf(mtp->cons_out, ">%s_cons%d_%d:%d:%d:%d:%.1f\n", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i]);//, _tseq->splint_rotated[cons_i]);
+            if (mtp->out_fmt == FASTA_FMT) {
+                // >readName_consN_readLen:start:end:consLen:copyNum:fullLength
+                fprintf(mtp->cons_out, ">%s_cons%d_%d_%d_%d_%d_%.1f_%d\n", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
+            } else if (mtp->out_fmt == TAB_FMT) {
+                // readName/consN/readLen/start/end/consLen/copyNum/fullLength
+                fprintf(mtp->cons_out, "%s\tcons%d\t%d\t%d\t%d\t%d\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
+            }
             cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
-            for (i = cons_seq_start; i < cons_seq_end; ++i)  fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
+            for (i = cons_seq_start; i < cons_seq_end; ++i)  
+                fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
             cons_seq_start += _tseq->cons_len[cons_i];
             fprintf(mtp->cons_out, "\n");
         }
@@ -173,7 +205,7 @@ tandem_seq_t *alloc_tandem_seq(int n) {
         tseq[i].cons_end = (int*)_err_malloc(sizeof(int));
         tseq[i].copy_num = (double*)_err_malloc(sizeof(double));
         tseq[i].cons_len = (int*)_err_malloc(sizeof(int));
-        tseq[i].splint_rotated = (int8_t*)_err_malloc(sizeof(int8_t));
+        tseq[i].full_length = (int8_t*)_err_malloc(sizeof(int8_t));
         tseq[i].cons_score = (int*)_err_malloc(sizeof(int));
     }
     return tseq;
@@ -187,12 +219,10 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mini_tandem_para *mtp = (mini_tandem_para*)_err_malloc(sizeof(mini_tandem_para));
     mtp->n_thread = THREAD_N;
 
-    mtp->splint_fn = NULL; mtp->splint_seq = NULL; mtp->splint_rc_seq = NULL; mtp->splint_len = 0;
+    // mtp->splint_fn = NULL; mtp->splint_seq = NULL; mtp->splint_rc_seq = NULL; mtp->splint_len = 0;
+    mtp->ada_match_rat = ADA_MATCH_RAT;
     mtp->five_fn = NULL; mtp->five_seq = NULL; mtp->five_rc_seq = NULL; mtp->five_len = 0;
     mtp->three_fn = NULL; mtp->three_seq = NULL; mtp->three_rc_seq = NULL; mtp->three_len = 0;
-    mtp->cons_out = stdout;
-    mtp->only_longest = 0;
-    mtp->detail_fp = NULL;
     mtp->k = KMER_SIZE;
     mtp->w = KMER_WSIZE;
     mtp->s = KMER_SSIZE;
@@ -204,6 +234,11 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->min_p = MIN_PERIOD;
     mtp->max_p = MAX_PERIOD;
 
+    mtp->cons_out = stdout;
+    mtp->only_longest = 0;
+    mtp->only_full_length = 0;
+    mtp->out_fmt = FASTA_FMT;
+    mtp->detail_fp = NULL;
 
     mtp->max_range = REP_RANGE;
 
@@ -213,7 +248,7 @@ mini_tandem_para *mini_tandem_init_para(void) {
 void mini_tandem_free_para(mini_tandem_para *mtp) {
     if (mtp->detail_fp != NULL) err_fclose(mtp->detail_fp);
     if (mtp->cons_out != stdout) err_fclose(mtp->cons_out);
-    if (mtp->splint_fn != NULL) free(mtp->splint_fn); if (mtp->splint_seq != NULL) free(mtp->splint_seq); if (mtp->splint_rc_seq != NULL) free(mtp->splint_rc_seq);
+    //if (mtp->splint_fn != NULL) free(mtp->splint_fn); if (mtp->splint_seq != NULL) free(mtp->splint_seq); if (mtp->splint_rc_seq != NULL) free(mtp->splint_rc_seq);
     if (mtp->five_fn != NULL) free(mtp->five_fn); if (mtp->five_seq != NULL) free(mtp->five_seq); if (mtp->five_rc_seq != NULL) free(mtp->five_rc_seq);
     if (mtp->three_fn != NULL) free(mtp->three_fn); if (mtp->three_seq != NULL) free(mtp->three_seq); if (mtp->three_rc_seq != NULL) free(mtp->three_rc_seq);
     free(mtp);
@@ -227,12 +262,12 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
     kseq_t *read_seq = (kseq_t*)calloc(CHUNK_READ_N, sizeof(kseq_t));
     for (i = 0; i < CHUNK_READ_N; ++i) read_seq[i].f = fs;
     tandem_seq_t *tseq = alloc_tandem_seq(CHUNK_READ_N);
-    if (mtp->splint_fn != NULL) {
+    /* if (mtp->splint_fn != NULL) {
         gzFile splint_fp = xzopen(mtp->splint_fn, "r");
         mtp->splint_len = get_seq_from_fx(splint_fp, &(mtp->splint_seq));
         mtp->splint_rc_seq = get_rc_seq(mtp->splint_seq, mtp->splint_len);
         err_gzclose(splint_fp);
-    }
+    }*/
     if (mtp->five_fn != NULL && mtp->three_fn != NULL) {
         gzFile five_fp = xzopen(mtp->five_fn, "r"); gzFile three_fp = xzopen(mtp->three_fn, "r");
         mtp->five_len = get_seq_from_fx(five_fp, &(mtp->five_seq)); mtp->five_rc_seq = get_rc_seq(mtp->five_seq, mtp->five_len);
@@ -267,7 +302,7 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
             for (j = 0; j < mtp->n_thread; ++j) pthread_join(tid[j], 0);
             free(tid);
         }
-        // output initial consensus sequences
+        // output consensus sequences
         mini_tandem_output(n_seqs, read_seq, tseq, mtp);
     }
     pthread_rwlock_destroy(&RWLOCK);
@@ -277,7 +312,7 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
         free((read_seq+i)->name.s); free((read_seq+i)->comment.s); free((read_seq+i)->seq.s); free((read_seq+i)->qual.s);
         seq_t *cons_seq = tseq[i].cons_seq;
         free(cons_seq->name.s); free(cons_seq->comment.s); free(cons_seq->seq.s); free(cons_seq->qual.s); 
-        free(tseq[i].cons_seq); free(tseq[i].cons_start); free(tseq[i].cons_end); free(tseq[i].cons_len); free(tseq[i].copy_num); free(tseq[i].splint_rotated); free(tseq[i].cons_score);
+        free(tseq[i].cons_seq); free(tseq[i].cons_start); free(tseq[i].cons_end); free(tseq[i].cons_len); free(tseq[i].copy_num); free(tseq[i].full_length); free(tseq[i].cons_score);
     } free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp);
     aux_free(aux, mtp->n_thread);
     return 0;
@@ -287,9 +322,9 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 int main(int argc, char *argv[])
 {
     mini_tandem_para *mtp = mini_tandem_init_para();
-    int c;
+    int c, op_idx;
     double realtime0 = realtime();
-    while ((c = getopt_long(argc, argv, "k:w:m:Hs:r:c:e:p:P:S:5:3:d:t:lO:",mini_tandem_opt, NULL)) >= 0) {
+    while ((c = getopt_long(argc, argv, "k:w:m:s:Hc:e:p:P:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
         switch(c)
         {
             case 'k': mtp->k = atoi(optarg); break;
@@ -297,6 +332,7 @@ int main(int argc, char *argv[])
             case 'm': mtp->m = atoi(optarg); break;
             case 's': mtp->s = atoi(optarg); break;
             case 'H': mtp->hpc = 1; break;
+
             case 'c': mtp->min_copy = atoi(optarg); break;
             case 'e': mtp->max_div = atof(optarg); break;
             case 'p': mtp->min_p = atoi(optarg);
@@ -312,24 +348,45 @@ int main(int argc, char *argv[])
                       }
                       break;
           //case 'r': mtp->max_range = atoi(optarg); break;
-            case 'd': mtp->detail_fp = xopen(optarg, "w"); break;
-            case 'S': mtp->splint_fn = strdup(optarg); break;
+
+            //case 'S': mtp->splint_fn = strdup(optarg); break;
             case '5': mtp->five_fn = strdup(optarg); break;
             case '3': mtp->three_fn = strdup(optarg); break;
-            case 'O': mtp->cons_out = xopen(optarg, "w"); break;
+            case 'a': mtp->ada_match_rat = atof(optarg); break;
+
+            case 'o': mtp->cons_out = xopen(optarg, "w"); break;
             case 'l': mtp->only_longest = 1; break;
+            case 'F': mtp->only_full_length = 1; break;
+            case 'f': mtp->out_fmt = atoi(optarg); 
+                      if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT) {
+                          err_printf("\n[main] Error: unknown format number: %d. (-%c --%s)\n", atoi(optarg), c, mini_tandem_opt[op_idx].name);
+                          goto End;
+                      }
+                      break;
+
             case 't': mtp->n_thread = atoi(optarg); break;
 
             default:
-                      err_printf("Error: unknown option: -%c %s.\n", c, optarg);
+                      err_printf("\n[main] Error: unknown option: -%c %s.\n", c, optarg);
                       goto End;
         }
     }
 	if (optind + 1 > argc) {
         err_fprintf(stderr, "\n[main] Error: Please specify a input file.\n");
-        return usage();
+        usage(); goto End;
     }
-
+    if (mtp->k > MAX_KMER_SIZE) {
+        err_printf("\n[main] Error: k-mer length can not be larger than %d (%d).\n", MAX_KMER_SIZE, mtp->k);
+        usage(); goto End;
+    }
+    if (mtp->only_full_length && (mtp->five_fn == NULL || mtp->three_fn == NULL)) {
+        err_printf("\n[main] Error: 5' and 3' adapter sequence need to be provided.\n");
+        usage(); goto End;
+    }
+    if (mtp->five_fn == NULL && mtp->three_fn != NULL) 
+        err_printf("\n[main] Warning: only 3' adapter sequence is provided. Full-length sequence cannot be determined.\n");
+    if (mtp->five_fn != NULL && mtp->three_fn == NULL) 
+        err_printf("\n[main] Warning: only 5' adapter sequence is provided. Full-length sequence cannot be determined.\n");
     mtp->div_exp = get_div_exp(mtp->k, mtp->max_div);
     mini_tandem(argv[optind], mtp);
 End:

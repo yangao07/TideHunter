@@ -8,7 +8,7 @@
 #include "spoa_align.h"
 #include "utils.h"
 
-void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, mini_tandem_para *mtp, int8_t splint_rotated) {
+void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, mini_tandem_para *mtp, int8_t full_length) {
     if (cons_len < mtp->min_p || cons_len > mtp->max_p) return;
     if (mtp->only_longest && tseq->cons_n == 1) {
         if (end-start > tseq->cons_end[0]-tseq->cons_start[0]) {
@@ -26,12 +26,12 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int
         tseq->cons_start = (int*)_err_realloc(tseq->cons_start, tseq->cons_m * sizeof(int));
         tseq->cons_end = (int*)_err_realloc(tseq->cons_end, tseq->cons_m * sizeof(int));
         tseq->copy_num = (double*)_err_realloc(tseq->copy_num, tseq->cons_m * sizeof(double));
-        tseq->splint_rotated = (int8_t*)_err_realloc(tseq->splint_rotated, tseq->cons_m * sizeof(int8_t));
+        tseq->full_length = (int8_t*)_err_realloc(tseq->full_length, tseq->cons_m * sizeof(int8_t));
         tseq->cons_len = (int*)_err_realloc(tseq->cons_len, tseq->cons_m * sizeof(int));
         tseq->cons_score = (int*)_err_realloc(tseq->cons_score, tseq->cons_m * sizeof(int));
     }
     tseq->cons_start[tseq->cons_n] = start; tseq->cons_end[tseq->cons_n] = end; tseq->copy_num[tseq->cons_n] = copy_num;
-    tseq->splint_rotated[tseq->cons_n] = splint_rotated;
+    tseq->full_length[tseq->cons_n] = full_length;
     tseq->cons_len[tseq->cons_n] = cons_len; tseq->cons_score[tseq->cons_n] = 0; // TODO cons_score
     ++tseq->cons_n;
 }
@@ -47,7 +47,7 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                 if (par_pos[i] >= 0 && par_pos[i+1] >= 0) {
                     start = par_pos[i], end = par_pos[i+1];
                     printf(">seqs_%d:%d-%d\n", end-start, start, end);
-                    for (j = start+1; j <= end; ++j) printf("%c", seq[j]);
+                    for (j = start+1; j <= end; ++j) printf("%c", "ACGTN"[bseq[j]]);
                     printf("\n");
                 }
             }
@@ -73,68 +73,64 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                 ksw2_right_ext(cons_bseq, cons_len, bseq+par_pos[j-1]+1, seq_len-par_pos[j-1]-1, &max_q, &max_t); cons_end = par_pos[j-1] + max_t + 1;
                 // printf("max_q: %d, max_t: %d\n", max_q, max_t);
                 copy_num += (max_q + 1.0) / cons_len;
-                // rotate the cons based on splint_seq 
-                int splint_rotated = 0;
-                if (mtp->splint_seq != NULL && cons_len > mtp->splint_len) { // TODO use ksw
-                    int ed, min_ed = mtp->splint_len, sp_len = mtp->splint_len, min_start, min_end, idx = -1;
-                    // search splint within a full cons, forward and reverse
-                    ed = edlib_align_HW(mtp->splint_seq, mtp->splint_len, cons_seq, cons_len, &start, &end);
-                    if (ed >= 0 && sp_len * 0.9 <= end-start && sp_len * 1.1 >= end-start && ed < min_ed) {
-                        min_ed = ed; idx = 0; // Forward single cons
-                        min_start = start; min_end = end;
-                    }
-                    ed = edlib_align_HW(mtp->splint_rc_seq, mtp->splint_len, cons_seq, cons_len, &start, &end);
-                    if (ed >= 0 && sp_len * 0.9 <= end-start && sp_len * 1.1 >= end-start && ed < min_ed) {
-                        min_ed = ed; idx = 1; // Reverse-comp single cons
-                        min_start = start; min_end = end;
-                    }
-                    // search splint within a concatenated 2 cons, forward and reverse
+                // find full-length sequence based on 5' and 3' adapter sequences
+                int full_length = 0;
+                if (mtp->five_seq != NULL && mtp->three_seq != NULL && cons_len > mtp->five_len + mtp->three_len) {
                     char *cons2 = (char*)_err_malloc(((cons_len << 1) + 1) * sizeof(char));
                     strcpy(cons2, cons_seq); strcpy(cons2+cons_len, cons_seq); cons2[cons_len<<1] = '\0'; // concatenated 2 copies
-                    ed = edlib_align_HW(mtp->splint_seq, mtp->splint_len, cons2, cons_len<<1, &start, &end);
-                    if (ed >= 0 && ed < min_ed && sp_len * 0.9 <= end-start && sp_len * 1.1 >= end-start && start < cons_len && end >= cons_len) {
-                        min_ed = ed; idx = 2; // Forward 2 copies cons
-                        min_start = start; min_end = end;
+                    int tar_start, tar_end, tot_ed, _5_ed, _3_ed, _5_start, _5_end, _3_start, _3_end;
+                    tar_start = tar_end = -1;
+                    // |---plus-5'adapter---|---target-sequence---|---minus-3'adapter---|
+                    _5_start = _5_end = _3_start = _3_end = -1; tot_ed = INT32_MAX;
+                    _5_ed = edlib_align_HW(mtp->five_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end);
+                    if (_5_ed > mtp->five_len * mtp->ada_match_rat) goto REV;
+                    _3_ed = edlib_align_HW(mtp->three_rc_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end);
+                    if (_3_ed > mtp->three_len * mtp->ada_match_rat) goto REV; 
+                    if (_3_start <= _5_end) {
+                        if (_3_end + cons_len < cons_len << 1 && _3_start + cons_len > _5_end) {
+                            tar_start = _5_end + 1;
+                            tar_end = _3_start + cons_len - 1;
+                            full_length = 1;
+                            tot_ed = _5_ed + _3_ed;
+                        }
+                    } else {
+                        tar_start = _5_end + 1;
+                        tar_end = _3_start - 1;
+                        tot_ed = _5_ed + _3_ed;
+                        full_length = 1;
                     }
-                    ed = edlib_align_HW(mtp->splint_rc_seq, mtp->splint_len, cons2, cons_len<<1, &start, &end);
-                    if (ed >= 0 && ed < min_ed && sp_len * 0.9 <= end-start && sp_len * 1.1 >= end-start && start < cons_len && end >= cons_len) {
-                        min_ed = ed; idx = 3; // Reverse-comp 2 copies cons
-                        min_start = start; min_end = end;
+                    if (tot_ed == 0) goto WRITE_CONS;
+                    // printf("FOR: %d, %d => %d\n", tar_start, tar_end, tot_ed);
+                    // |---plus-3'adapter---|---target-sequence---|---minus-5'adapter---|
+REV:
+                    _5_ed = edlib_align_HW(mtp->five_rc_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end);
+                    if (_5_ed > mtp->five_len * mtp->ada_match_rat) goto WRITE_CONS;
+                    _3_ed = edlib_align_HW(mtp->three_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end);
+                    if (_3_ed > mtp->three_len * mtp->ada_match_rat) goto WRITE_CONS; 
+                    if (_5_ed + _3_ed < tot_ed) {
+                        if (_5_start <= _3_end) {
+                            if (_5_end + cons_len < cons_len << 1 && _5_start + cons_len > _3_end) {
+                                tar_start = _3_end + 1;
+                                tar_end = _5_start + cons_len - 1;
+                                full_length = 2;
+                            }
+                        } else {
+                            tar_start = _3_end + 1;
+                            tar_end = _5_start - 1;
+                            full_length = 2;
+                        }
+                        // printf("REV: %d, %d => %d\n", tar_start, tar_end, _5_ed + _3_ed);
                     }
-                    // rotate cons based on ed result
-                    switch(idx)
-                    {
-                        case 0: 
-                        case 1:
-                            if (cons_len-min_end-1 > 0 && cons_len-min_end-1+min_start >= mtp->min_p && cons_len-min_end-1+min_start <= mtp->max_p) {
-                                memcpy(cons_seq, cons2 + min_end + 1, cons_len - min_end - 1);
-                                memcpy(cons_seq+cons_len-min_end-1, cons2, min_start);
-                                cons_seq[cons_len - min_end - 1 + min_start] = '\0';
-                                cons_len = cons_len - min_end - 1 + min_start;
-                                splint_rotated = 1;
-                            } else cons_len = 0;
-                            break;
-                        case 2:
-                        case 3:
-                            min_end -= cons_len;
-                            if (min_start-min_end-1 > mtp->min_p && min_start-min_end-1 <= mtp->max_p) {
-                                memcpy(cons_seq, cons2 + min_end + 1, min_start - min_end - 1);
-                                cons_seq[min_start-min_end-1] = '\0';
-                                cons_len = min_start-min_end-1;
-                                splint_rotated = 1;
-                            } else cons_len = 0;
-                            break;
-                        default:;
-                            // err_printf("%s: no splint sequence found in consensus sequence.\n", read_name);
+WRITE_CONS:
+                    if (tar_start > 0 && tar_end > tar_start) {
+                        memcpy(cons_seq, cons2 + tar_start , tar_end - tar_start + 1);
+                        cons_seq[tar_end - tar_start + 1] = '\0';
+                        cons_len = tar_end - tar_start + 1;
                     }
-                    free(cons2);
-                } 
-                // TODO find full-length sequence based on 5' and 3' adapter sequences
-                // int full_length = 0;
-                // if (mtp->five_seq != NULL && mtp->three_seq != NULL && cons_len > mtp->five_len + mtp->three_len) {
-                // }
+                }
                 // write cons_seq into tseq
-                write_tandem_cons_seq(tseq, cons_seq, cons_len, cons_start, cons_end, copy_num, mtp, splint_rotated);
+                if (!(mtp->only_full_length) || full_length > 0)
+                    write_tandem_cons_seq(tseq, cons_seq, cons_len, cons_start, cons_end, copy_num, mtp, full_length);
             }
             i = j + 1;
         }
