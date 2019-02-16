@@ -99,8 +99,10 @@ TideHunter works with FASTA, FASTQ, gzip'd FASTA(.fa.gz) and gzip'd FASTQ(.fq.gz
 
 ### <a name="adapter"></a>Adapter sequence
 Additional adapter sequence files can be provided to TideHunter with `-5` and `-3` options.
+
 TideHunter uses adapter information to search for the full-length sequence from the generated consensus.
-Once two adapters are found, TideHunger trims and reorients the consensus sequence.
+
+Once two adapters are found, TideHunter trims and reorients the consensus sequence.
 
 ## <a name="output"></a>Output
 TideHunter can output consensus sequence in FASTA format by default, 
