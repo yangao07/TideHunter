@@ -67,7 +67,6 @@ cd TideHunter; make
 ```
 Usage:   TideHunter [options] in.fa/fq > cons_out.fa
 
-Options: 
 Options:
     Seeding:
          -k --kmer-length [INT]    k-mer length (no larger than 16). [8]
@@ -100,7 +99,8 @@ TideHunter works with FASTA, FASTQ, gzip'd FASTA(.fa.gz) and gzip'd FASTQ(.fq.gz
 
 ### <a name="adapter"></a>Adapter sequence
 Additional adapter sequence files can be provided to TideHunter with `-5` and `-3` options.
-TideHunter uses adapter information to extract full-length sequence from the generated consensus.
+TideHunter uses adapter information to search for the full-length sequence from the generated consensus.
+Once two adapters are found, TideHunger trims and reorients the consensus sequence.
 
 ## <a name="output"></a>Output
 TideHunter can output consensus sequence in FASTA format by default, 
@@ -109,28 +109,27 @@ it can also provide output in tabular format.
 ### <a name="tabular"></a>Tabular format
 For tabular format, 9 columns will be generated for each consensus sequence:
 
-|  id | Column name | Explanation | 
+| id  | Column name | Explanation | 
 |:---:|   :---      | ---        |
-|1    | readName    | the original read name |
-|2    | consN       | `N` is the ID number of the consensus sequences from the same read, starts from 0 |
-|3    | readLen     | length of the original long-read |
-|4    | start       | start coordinate of the tandem repeat, 1-base |
-|5    | end         | end coordinate of the tandem repeat, 1-base |
-|6    | consLen     | length of the consensus sequence |
-|7    | copyNum     | copy number of the tandem repeat |
-|8    | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length|
-|9    | consensus   | consensus sequence |
+|  1  | readName    | the original read name |
+|  2  | consN       | `N` is the ID number of the consensus sequences from the same read, starts from 0 |
+|  3  | readLen     | length of the original long-read |
+|  4  | start       | start coordinate of the tandem repeat, 1-base |
+|  5  | end         | end coordinate of the tandem repeat, 1-base |
+|  6  | consLen     | length of the consensus sequence |
+|  7  | copyNum     | copy number of the tandem repeat |
+|  8  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
+|  9  | consensus   | consensus sequence |
 
 ### <a name="fasta"></a>FASTA format
 For FASTA output format, the read name contains detailed information of the detected tandem repeat, 
-i.e., the above 9 columns.
+i.e., the above columns 1 ~ 8.
 The sequence is the consensus sequence.
 
 The read name of each consensus sequence has the following format:
 ```
 >readName_consN_readLen_start_end_consLen_copyNum_fullLen
 ```
-
 
 ## <a name="contact"></a>Contact
 Yan Gao yangao07@hit.edu.cn

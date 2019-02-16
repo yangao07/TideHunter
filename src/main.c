@@ -150,6 +150,7 @@ int THREAD_READ_I;
 pthread_rwlock_t RWLOCK;
 
 // TODO cons.fastq
+// TODO cons.stats
 void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
     int i, seq_i, cons_i, cons_seq_start = 0, cons_seq_end = 0;
     tandem_seq_t *_tseq;
