@@ -83,9 +83,9 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                     // |---plus-5'adapter---|---target-sequence---|---minus-3'adapter---|
                     _5_start = _5_end = _3_start = _3_end = -1; tot_ed = INT32_MAX;
                     _5_ed = edlib_align_HW(mtp->five_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end);
-                    if (_5_ed > mtp->five_len * mtp->ada_match_rat) goto REV;
+                    if (_5_ed > mtp->five_len * (1-mtp->ada_match_rat)) goto REV;
                     _3_ed = edlib_align_HW(mtp->three_rc_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end);
-                    if (_3_ed > mtp->three_len * mtp->ada_match_rat) goto REV; 
+                    if (_3_ed > mtp->three_len * (1-mtp->ada_match_rat)) goto REV; 
                     if (_3_start <= _5_end) {
                         if (_3_end + cons_len < cons_len << 1 && _3_start + cons_len > _5_end) {
                             tar_start = _5_end + 1;
@@ -99,14 +99,16 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                         tot_ed = _5_ed + _3_ed;
                         full_length = 1;
                     }
+#ifdef __DEBUG__
+                    printf("FOR: %d, %d => %d, %d\n", tar_start, tar_end, _5_ed, _3_ed);
+#endif
                     if (tot_ed == 0) goto WRITE_CONS;
-                    // printf("FOR: %d, %d => %d\n", tar_start, tar_end, tot_ed);
                     // |---plus-3'adapter---|---target-sequence---|---minus-5'adapter---|
 REV:
                     _5_ed = edlib_align_HW(mtp->five_rc_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end);
-                    if (_5_ed > mtp->five_len * mtp->ada_match_rat) goto WRITE_CONS;
+                    if (_5_ed > mtp->five_len * (1-mtp->ada_match_rat)) goto WRITE_CONS;
                     _3_ed = edlib_align_HW(mtp->three_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end);
-                    if (_3_ed > mtp->three_len * mtp->ada_match_rat) goto WRITE_CONS; 
+                    if (_3_ed > mtp->three_len * (1-mtp->ada_match_rat)) goto WRITE_CONS; 
                     if (_5_ed + _3_ed < tot_ed) {
                         if (_5_start <= _3_end) {
                             if (_5_end + cons_len < cons_len << 1 && _5_start + cons_len > _3_end) {
@@ -119,7 +121,9 @@ REV:
                             tar_end = _5_start - 1;
                             full_length = 2;
                         }
-                        // printf("REV: %d, %d => %d\n", tar_start, tar_end, _5_ed + _3_ed);
+#ifdef __DEBUG__
+                        printf("REV: %d, %d => %d\n", tar_start, tar_end, _5_ed + _3_ed);
+#endif
                     }
 WRITE_CONS:
                     if (tar_start > 0 && tar_end > tar_start) {
