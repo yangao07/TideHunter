@@ -17,8 +17,10 @@ KSEQ_INIT(gzFile, gzread)
 #define REP_RANGE -1 // -1: unlimited
 #define MIN_COPY 2
 #define MAX_DIV 0.25
-#define MIN_PERIOD 30
+#define MIN_PERIOD 2
+#define DEF_MIN_PERIOD 30
 #define MAX_PERIOD UINT16_MAX
+#define DEF_MAX_PERIOD UINT16_MAX
 
 #define FASTA_FMT 1
 #define TAB_FMT 2

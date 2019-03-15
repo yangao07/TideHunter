@@ -111,7 +111,7 @@ it can also provide output in tabular format.
 ### <a name="tabular"></a>Tabular format
 For tabular format, 9 columns will be generated for each consensus sequence:
 
-| id  | Column name | Explanation | 
+| No. | Column name | Explanation | 
 |:---:|   :---      | ---        |
 |  1  | readName    | the original read name |
 |  2  | consN       | `N` is the ID number of the consensus sequences from the same read, starts from 0 |
@@ -137,5 +137,7 @@ The read name of each consensus sequence has the following format:
 Yan Gao yangao07@hit.edu.cn
 
 Yadong Wang ydwang@hit.edu.cn
+
+Yi Xing XINGYI@email.chop.edu
 
 [github issues](https://github.com/yangao07/TideHunter/issues)

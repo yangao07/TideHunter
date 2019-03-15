@@ -5,11 +5,12 @@ CPPFLAGS =   -std=c++11
 
 # for debug
 ifneq ($(gdb),)
-	CFLAGS   =	 -g -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -D __DEBUG__ 
+	CFLAGS   =	 -g -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -D __DEBUG__
 endif
 # for gprof
 ifneq ($(pg),)
 	PG_FLAG  =   -pg
+	CFLAGS  +=   -pg
 endif
 
 # use abPOA, otherwise use spoa
