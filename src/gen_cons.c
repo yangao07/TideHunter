@@ -5,7 +5,6 @@
 #include "edlib_align.h"
 #include "abpoa_align.h"
 #include "ksw2_align.h"
-#include "spoa_align.h"
 #include "utils.h"
 
 void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, mini_tandem_para *mtp, int8_t full_length) {

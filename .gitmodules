@@ -1,8 +1,3 @@
-[submodule "spoa"]
-    path = spoa
-    url = https://github.com/rvaser/spoa.git
-    ignore = dirty
-    branch = master
 [submodule "abPOA"]
 	path = abPOA
 	url = https://github.com/yangao07/abPOA.git

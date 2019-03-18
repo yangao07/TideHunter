@@ -5,7 +5,6 @@
 #include "edlib_align.h"
 #include "abpoa_align.h"
 #include "ksw2_align.h"
-#include "spoa_align.h"
 #include "utils.h"
 
 // pos: 0-base
