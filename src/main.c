@@ -40,6 +40,17 @@ const struct option mini_tandem_opt [] = {
 	{ 0, 0, 0, 0}
 };
 
+static inline int64_t th_parse_num(const char *str)
+{
+        double x;
+        char *p;
+        x = strtod(str, &p);
+        if (*p == 'G' || *p == 'g') x *= 1e9;
+        else if (*p == 'M' || *p == 'm') x *= 1e6;
+        else if (*p == 'K' || *p == 'k') x *= 1e3;
+        return (int64_t)(x + .499);
+}
+
 static int usage(void)
 {
 	err_printf("\n");
@@ -66,8 +77,8 @@ static int usage(void)
 	// TODO min_copy < 2 ???
 	err_printf("         -c --min-copy    [INT]    minimum copy number of tandem-repeats. [%d]\n", MIN_COPY);
 	err_printf("         -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [%.2f]\n", MAX_DIV);
-	err_printf("         -p --min-period  [INT]    minimum period size of tandem repeat. (>=%d) [%d]\n", MIN_PERIOD, DEF_MIN_PERIOD);
-	err_printf("         -P --max-period  [INT]    maximum period size of tandem repeat. (<=%d) [%d]\n", MAX_PERIOD, DEF_MAX_PERIOD);
+	err_printf("         -p --min-period  [INT]    minimum period size of tandem repeat. (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
+	err_printf("         -P --max-period  [INT]    maximum period size of tandem repeat. (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
 
 //  err_printf("         -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
 //  err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
@@ -328,7 +339,12 @@ int main(int argc, char *argv[])
 	while ((c = getopt_long(argc, argv, "k:w:m:s:Hc:e:p:P:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
-			case 'k': mtp->k = atoi(optarg); break;
+			case 'k': mtp->k = atoi(optarg); 
+			          if (mtp->k > MAX_KMER_SIZE) {
+			          	  err_printf("\n[main] Error: k-mer length can not be larger than %d (%ld).\n", MAX_KMER_SIZE, mtp->k);
+			          	  goto End;
+				      }
+				      break;
 			case 'w': mtp->w = atoi(optarg); break;
 			case 'm': mtp->m = atoi(optarg); break;
 			case 's': mtp->s = atoi(optarg); break;
@@ -336,19 +352,19 @@ int main(int argc, char *argv[])
 
 			case 'c': mtp->min_copy = atoi(optarg); break;
 			case 'e': mtp->max_div = atof(optarg); break;
-			case 'p': mtp->min_p = atoi(optarg);
+			case 'p': mtp->min_p = th_parse_num(optarg);
 					  if (mtp->min_p < MIN_PERIOD) {
-						  err_printf("Error: -p --min-period(%d) needs to be >= %d.\n", mtp->min_p, MIN_PERIOD); 
+						  err_printf("Error: -p --min-period needs to be >= %u. (%ld)\n", MIN_PERIOD, mtp->min_p); 
 						  goto End;
 					  }
 					  break;
-			case 'P': mtp->max_p = atoi(optarg); 
+			case 'P': mtp->max_p = th_parse_num(optarg); 
 					  if (mtp->max_p > MAX_PERIOD) {
-						  err_printf("Error: -P --max-period(%d) needs to be <= %d.\n", mtp->max_p, MAX_PERIOD); 
+						  err_printf("Error: -P --max-period needs to be <= %u. (%ld)\n", MAX_PERIOD, mtp->max_p); 
 						  goto End;
 					  }
 					  break;
-		  //case 'r': mtp->max_range = atoi(optarg); break;
+		  //case 'r': mtp->max_range = th_parse_num(optarg); break;
 
 			//case 'S': mtp->splint_fn = strdup(optarg); break;
 			case '5': mtp->five_fn = strdup(optarg); break;
@@ -374,10 +390,6 @@ int main(int argc, char *argv[])
 	}
 	if (optind + 1 > argc) {
 		err_fprintf(stderr, "\n[main] Error: please specify an input file.\n");
-		usage(); goto End;
-	}
-	if (mtp->k > MAX_KMER_SIZE) {
-		err_printf("\n[main] Error: k-mer length can not be larger than %d (%d).\n", MAX_KMER_SIZE, mtp->k);
 		usage(); goto End;
 	}
 	if (mtp->only_full_length && (mtp->five_fn == NULL || mtp->three_fn == NULL)) {

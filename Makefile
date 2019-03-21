@@ -67,14 +67,6 @@ endif
 
 
 
-# spoa
-SPOA_DIR     = ./spoa
-SPOA_INCLUDE = ./spoa/include/spoa
-SPOALIB_DIR  = $(SPOA_DIR)/build/lib
-SPOALIB      = $(SPOA_DIR)/build/lib/libspoa.a
-SPOALIB_FLAG = -L$(SPOALIB_DIR) -lspoa
-INCLUDE     += -I$(SPOA_INCLUDE)
-
 #TODO different -I for different .c
 BIN_DIR =	./bin
 SRC_DIR =   ./src
@@ -105,9 +97,9 @@ endif
 all:		$(MINMAP2LIB) $(BIN) 
 TideHunter: $(BIN)
 
-$(BIN): $(OBJS) $(ABPOALIB) $(SPOALIB) Makefile
+$(BIN): $(OBJS) $(ABPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(SPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
+	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
@@ -130,23 +122,12 @@ $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
 $(KSW2_DIR)/ksw2_gg2_sse.o: $(KSW2_DIR)/ksw2_gg2_sse.c $(KSW2_DIR)/ksw2.h
 	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $< -o $@
 
-# spoa
-$(SPOALIB): 
-	wd=$(PWD); \
-	cd $(SPOA_DIR); mkdir build; cd build; \
-	cmake -DCMAKE_BUILD_TYPE=Release ..;	\
-	make; \
-	cd $(wd);
-
 $(SRC_DIR)/abpoa_align.o: $(SRC_DIR)/abpoa_align.c $(ABPOA)
 	$(CC) -c $(CFLAGS) $< -I $(ABPOA_INCLUDE) -o $@
 
 # ksw2
 $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
 	$(CC) -c $(CFLAGS) $< -I $(KSW2_INCLUDE) -o $@
-
-$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/spoa_align.cpp $(SRC_DIR)/spoa_align.h $(SPOALIB)
-	$(CPP) -c $< $(CPPFLAGS) -I $(SPOA_INCLUDE) -o $@
 
 clean:
 	rm -f $(SRC_DIR)/*.o $(BIN)
@@ -160,24 +141,17 @@ clean_abPOA:
 clean_ksw2:
 	rm $(KSW2_DIR)/*.o
 
-clean_spoa:
-	wd=$(PWD); \
-	rm $(SPOALIB);	\
-	cd $(SPOA_DIR)/build; make clean;	\
-	cd $(wd);
-
 clean_edlib:
 	rm $(EDLIB)
 
-clean_all: clean clean_abPOA clean_ksw2 clean_edlib clean_spoa
+clean_all: clean clean_abPOA clean_ksw2 clean_edlib 
 
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h
-$(SRC_DIR)/gen_cons.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/ksw2_align.h $(SRC_DIR)/spoa_align.h
+$(SRC_DIR)/gen_cons.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/ksw2_align.h 
 $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/utils.h
 $(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/kseq.h
-$(SRC_DIR)/partition.o: $(SRC_DIR)/utils.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/ksw2_align.h $(SRC_DIR)/spoa_align.h $(SRC_DIR)/tandem_chain.h
+$(SRC_DIR)/partition.o: $(SRC_DIR)/utils.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/ksw2_align.h $(SRC_DIR)/tandem_chain.h
 $(SRC_DIR)/seq.o: $(SRC_DIR)/utils.h $(SRC_DIR)/seq.h
-$(SRC_DIR)/spoa_align.o: $(SRC_DIR)/utils.h $(SRC_DIR)/spoa_align.h
 $(SRC_DIR)/tandem_chain.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h
 $(SRC_DIR)/tandem_hit.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h $(SRC_DIR)/tandem_hit.h
 $(SRC_DIR)/tide_hunter.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h $(SRC_DIR)/partition.h $(SRC_DIR)/gen_cons.h $(SRC_DIR)/seq.h

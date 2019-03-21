@@ -263,11 +263,7 @@ int build_kmer_hash(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h
 
 // TODO use multiple-hit seeds that connects multiple-repeats (n>2)
 // discard too close hit, search further hit
-// 0. h: hash_value | position
-// 1. hash_hit1: period | end
-// 2. hit_h2: end | period | K ; K : MEM hit's length
-// collect cumulative kmer and hits number for each pos (for estimate of n and e)
-int collect_mem_hash_hit(hash_t *h, int hn, int k, int min_p, int max_p, hash_t **hash_hit) {
+int collect_hash_hit(hash_t *h, int hn, uint32_t min_p, uint32_t max_p, hash_t **hash_hit) {
     radix_sort_hash(h, h + hn); // sort h by hash values
 
     int i, n; int hit_n = 0;
@@ -281,94 +277,9 @@ int collect_mem_hash_hit(hash_t *h, int hn, int k, int min_p, int max_p, hash_t 
     }
     hit_n += (n-1);
 
-    // generate hash_hit1: period | end
-    hash_t *hash_hit1 = (hash_t*)_err_malloc(hit_n * sizeof(hash_t));
-    int start_i, j, _k, hi; int32_t p;
-    for (start_i = 0, hi = 0, i = 1, n = 1; i < hn; ++i) {
-        if ((h[i] >> 32) != (h[i-1] >> 32)) {
-            if (n > 1) {
-                for (j = 1; j < n; ++j) {
-                    for (_k = j-1; _k >= 0; --_k) {
-                        p = h[start_i+j] - h[start_i+_k];
-                        if (p >= min_p) break; // collect hit whose period >= p
-                    }
-                    if (p >= min_p && p <= max_p) {
-                        hash_hit1[hi] = ((hash_t)p << 32) | (h[start_i+j] & _32mask);
-                        ++hi;
-                    } else --hit_n;
-                }
-            }
-            start_i = i, n = 1;
-        } else ++n;
-    }
-    if (n > 1) {
-        for (j = 1; j < n; ++j) {
-            for (_k = j-1; _k >= 0; --_k) {
-                p = h[start_i+j] - h[start_i+_k];
-                if (p >= min_p) break; // collect hit whose period >= p
-            }
-            if (p >= min_p && p <= max_p) {
-                hash_hit1[hi] = ((hash_t)p << 32) | (h[start_i+j] & _32mask);
-                ++hi;
-            } else --hit_n;
-        }
-    }
-    radix_sort_hash(hash_hit1, hash_hit1 + hit_n); // sort hash_hit1 by period
-
-
-    // generate mem_hash_hit: end:32 | period:16 | K:16 ; K: MEM hit's length
-    int mem_hit_n, mem_l;
-    for (i = 1, mem_hit_n = 0, n = 0; i < hit_n; ++i) {
-        if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (mem_l = _get_hash_hit1_end(hash_hit1, i) - _get_hash_hit1_end(hash_hit1, i-1)) > k) {         
-
-            ++mem_hit_n;
-            n = 0;
-        } else { // (_get_hash_hit1_end(hash_hit1, i) == _get_hash_hit1_end(hash_hit1, i-1)+1)
-            if (n + mem_l > _16mask) {
-                n = mem_l - 1;
-                ++mem_hit_n;
-            } else n += mem_l;
-        }
-    }
-    ++mem_hit_n;
-
-    *hash_hit = (hash_t*)_err_malloc(mem_hit_n * sizeof(hash_t));
-    for (hi = 0, i = 1, n = 0; i < hit_n; ++i) {
-        if ((_get_hash_hit1_period(hash_hit1, i) != _get_hash_hit1_period(hash_hit1, i-1)) || (mem_l = _get_hash_hit1_end(hash_hit1, i) - _get_hash_hit1_end(hash_hit1, i-1)) > k) {         
-            (*hash_hit)[hi++] = _set_mem_hash_hit(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
-            n = 0;
-        } else { // (_get_hash_hit1_end(hash_hit1, i) == _get_hash_hit1_end(hash_hit1, i-1)+1)
-            if ((n + mem_l) > _16mask) {
-                (*hash_hit)[hi++] = _set_mem_hash_hit(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
-                n = mem_l-1;
-            } else n += mem_l;
-        }
-    }
-    (*hash_hit)[hi++] = _set_mem_hash_hit(hash_hit1[i-1], _get_hash_hit1_period(hash_hit1, i-1), n);
-    radix_sort_hash((*hash_hit), (*hash_hit) + mem_hit_n); // sort mem_hash_hit by end
-    free(hash_hit1);
-    return mem_hit_n;
-}
-
-int collect_hash_hit(hash_t *h, int hn, int min_p, int max_p, hash_t **hash_hit) {
-    radix_sort_hash(h, h + hn); // sort h by hash values
-
-    int i, n; int hit_n = 0;
-
-    // calculate total hits number
-    for (i = 1, n = 1; i < hn; ++i) {
-        if (h[i] >> 32 != h[i-1] >> 32) {
-            hit_n += (n-1); // use (n-1): only collect the adjacent hit
-            n = 1;
-        } else ++n;
-    }
-    hit_n += (n-1);
-
-    // generate hash_hit1: period | end
-    // make K always be 0
-    // generate hash_hit: end:32 | period:16 | K:16 ; K: MEM hit's length
+    // hash_hit: end:32 | period:32 
     *hash_hit = (hash_t*)_err_malloc(hit_n * sizeof(hash_t));
-    int start_i, j, k, hi; int32_t p;
+    int start_i, j, k, hi; uint32_t p;
     for (start_i = 0, hi = 0, i = 1, n = 1; i < hn; ++i) {
         if ((h[i] >> 32) != (h[i-1] >> 32)) {
             if (n > 1) {
@@ -378,10 +289,10 @@ int collect_hash_hit(hash_t *h, int hn, int min_p, int max_p, hash_t **hash_hit)
                         if (p >= min_p) break; // collect hit whose period >= p
                     }
                     if (p >= min_p && p <= max_p) {
-                        (*hash_hit)[hi] = _set_mem_hash_hit(h[start_i+j] & _32mask, p, 0);
+                        (*hash_hit)[hi] = _set_hash_hit(h[start_i+j] & _32mask, p);
                         ++hi;
 #ifdef __DEBUG__
-                        printf("p: %d, end: %lld, start: %lld\n", p, h[start_i+j] & _32mask, h[start_i+j-1] & _32mask);
+                        printf("p: %u, end: %lu, start: %lu\n", p, h[start_i+j] & _32mask, h[start_i+j-1] & _32mask);
 #endif
                     } else --hit_n;
                 }
@@ -396,10 +307,10 @@ int collect_hash_hit(hash_t *h, int hn, int min_p, int max_p, hash_t **hash_hit)
                     if (p >= min_p) break; // collect hit whose period >= p
             }
             if (p >= min_p && p <= max_p) {
-                (*hash_hit)[hi] = _set_mem_hash_hit(h[start_i+j] & _32mask, p, 0);
+                (*hash_hit)[hi] = _set_hash_hit(h[start_i+j] & _32mask, p);
                 ++hi;
 #ifdef __DEBUG__
-                printf("p: %d, end: %lld, start: %lld\n", p, h[start_i+j] & _32mask, h[start_i+j-1] & _32mask);
+                printf("p: %u, end: %lu, start: %lu\n", p, h[start_i+j] & _32mask, h[start_i+j-1] & _32mask);
 #endif
             } else --hit_n;
         }
@@ -416,7 +327,6 @@ int collect_tandem_repeat_hit(uint8_t *bseq, int seq_len, mini_tandem_para *mtp,
     printf("hash seed number: %d\n", hn);
 #endif
     // collect hash hits
-    // int hit_n = collect_mem_hash_hit(h, hn, mtp->k, mtp->min_p, mtp->max_p, &hit_h); free(h);
-    int hit_n = collect_hash_hit(h, hn, mtp->min_p, mtp->max_p, hit_h); free(h);
+    int hit_n = collect_hash_hit(h, hn, (uint32_t)mtp->min_p, (uint32_t)mtp->max_p, hit_h); free(h);
     return hit_n;
 }

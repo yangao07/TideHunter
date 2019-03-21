@@ -19,8 +19,9 @@ KSEQ_INIT(gzFile, gzread)
 #define MAX_DIV 0.25
 #define MIN_PERIOD 2
 #define DEF_MIN_PERIOD 30
-#define MAX_PERIOD UINT16_MAX
-#define DEF_MAX_PERIOD UINT16_MAX
+#define MAX_PERIOD UINT32_MAX
+#define DEF_MAX_PERIOD 100000 // UINT16_MAX
+#define DEF_MAX_PERIOD_STR "100K" // UINT16_MAX
 
 #define FASTA_FMT 1
 #define TAB_FMT 2
@@ -32,10 +33,10 @@ extern "C" {
 #endif
 
 typedef struct {
-    int k, w, s, m, hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
+    int64_t k, w, s, m; int hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
     int min_copy; double max_div, div_exp; // max allowed divergence
-    int min_p, max_p; // min/max period size
-    int max_range; // max range to find tandem repeat, -1 for no limit
+    int64_t min_p, max_p; // min/max period size
+    int64_t max_range; // max range to find tandem repeat, -1 for no limit
     // char *splint_fn, *splint_seq, *splint_rc_seq; int splint_len;
     float ada_match_rat;
     char *five_fn, *five_seq, *five_rc_seq; int five_len;

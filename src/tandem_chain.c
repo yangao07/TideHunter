@@ -112,15 +112,14 @@ int backtrack_dp(dp_t **dp, int x, int y, chain_t *chain, int ch_n) {
 void init_dp(hash_t *hit_h, dp_t **dp, int *hash_index, int *size, int total_n, int k) {
     // dp[total_n][0] = (dp_t){-1, -1, 0, 0, 0, 0, 0};
     int i, j, hash_i;
-    int start, end, period, mem_l;
+    int start, end, period;
     for (i = 0; i < total_n; ++i) {
         for (j = 0; j < size[i]; ++j) {
             hash_i = hash_index[i] + j;
-            end = _get_mem_hash_hit_end(hit_h, hash_i);
-            period = _get_mem_hash_hit_period(hit_h, hash_i);
-            mem_l = _get_mem_hash_hit_meml(hit_h, hash_i);
+            end = _get_hash_hit_end(hit_h, hash_i);
+            period = _get_hash_hit_period(hit_h, hash_i);
             start = end - period;
-            dp[i][j] = (dp_t){-1, -1, start, end, mem_l, 2*k+mem_l+0, 0};
+            dp[i][j] = (dp_t){-1, -1, start, end, k+MIN_OF_TWO(k,period), 0};
         }
     }
 }
@@ -154,7 +153,7 @@ static inline int get_con_score(dp_t *cur_dp, dp_t *pre_dp, int k, int *con_scor
     if (cur_start <= pre_start || cur_period >= pre_period * 1.8 || pre_period >= cur_period * 1.8) {
         return NO_CON;  // crossing hits
     }
-    int matched_bases = MIN_OF_TWO(abs(cur_end - pre_end), k + cur_dp->mem_l) + MIN_OF_TWO(abs(cur_start-pre_start), k + cur_dp->mem_l);
+    int matched_bases = MIN_OF_TWO(abs(cur_end - pre_end), k) + MIN_OF_TWO(abs(cur_start-pre_start), k);
     int delta_period = abs(cur_period-pre_period), dis1 = abs(cur_end - pre_end), dis2 = abs(cur_start - pre_start);
     int gap_cost = get_period_penalty1(cur_period, pre_period) + get_dis_penalty(dis1, dis2);
     *con_score = matched_bases - gap_cost;
@@ -272,7 +271,7 @@ int tandem_chain(int seq_len, hash_t *hash_hit, int hash_hit_n, mini_tandem_para
     // calculate DP matrix size, allocate DP matrix
     int tot_n = 1, *array_size, *hash_index;
     for (i = 1; i < hash_hit_n; ++i) {
-        if (_get_mem_hash_hit_end(hash_hit, i)  != _get_mem_hash_hit_end(hash_hit, i-1))
+        if (_get_hash_hit_end(hash_hit, i)  != _get_hash_hit_end(hash_hit, i-1))
             tot_n += 1;
     }
     *tot_N = tot_n;
@@ -283,7 +282,7 @@ int tandem_chain(int seq_len, hash_t *hash_hit, int hash_hit_n, mini_tandem_para
     dp[tot_n] = (dp_t*)_err_calloc(1, sizeof(dp_t));
 
     for (i = 1, j = 0, k = 1, idx = 0; i < hash_hit_n; ++i) {
-        if (_get_mem_hash_hit_end(hash_hit, i)  != _get_mem_hash_hit_end(hash_hit, i-1)) {
+        if (_get_hash_hit_end(hash_hit, i)  != _get_hash_hit_end(hash_hit, i-1)) {
             dp[j] = (dp_t*)_err_calloc(k, sizeof(dp_t));
             hash_index[j] = idx-k+1; array_size[j++] = k;
             k = 1;
@@ -360,9 +359,9 @@ UPDATE:
             int start_i = ch[i].cell[0].i, start_j = ch[i].cell[0].j, end_i = ch[i].cell[ch[i].len-1].i, end_j = ch[i].cell[ch[i].len-1].j;
             int from_i = dp[start_i][start_j].from_i, from_j = dp[start_i][start_j].from_j;
             j = 0;
-            printf("\tchain: %d(%d): start: %d, end: %d, p: %d, mem_l: %d, score: %d\n", j+1, ch[i].cell[j].i, dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].end, dp[ch[i].cell[j].i][ch[i].cell[j].j].end-dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].mem_l, dp[ch[i].cell[j].i][ch[i].cell[j].j].score);
+            printf("\tchain: %d(%d): start: %d, end: %d, p: %d, score: %d\n", j+1, ch[i].cell[j].i, dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].end, dp[ch[i].cell[j].i][ch[i].cell[j].j].end-dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].score);
             for (j = 1; j < ch[i].len; ++j) {
-                printf("\tchain: %d(%d): start: %d, end: %d, p: %d, mem_l: %d, score: %d, delta: %d\n", j+1, ch[i].cell[j].i, dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].end, dp[ch[i].cell[j].i][ch[i].cell[j].j].end-dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].mem_l, dp[ch[i].cell[j].i][ch[i].cell[j].j].score, dp[ch[i].cell[j].i][ch[i].cell[j].j].start- dp[ch[i].cell[j-1].i][ch[i].cell[j-1].j].start);
+                printf("\tchain: %d(%d): start: %d, end: %d, p: %d, score: %d, delta: %d\n", j+1, ch[i].cell[j].i, dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].end, dp[ch[i].cell[j].i][ch[i].cell[j].j].end-dp[ch[i].cell[j].i][ch[i].cell[j].j].start, dp[ch[i].cell[j].i][ch[i].cell[j].j].score, dp[ch[i].cell[j].i][ch[i].cell[j].j].start- dp[ch[i].cell[j-1].i][ch[i].cell[j-1].j].start);
             }
         }
     }

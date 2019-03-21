@@ -23,7 +23,7 @@ typedef struct {
 
 typedef struct {
     int from_i, from_j; // i : index of end postion, j : index of hit of end
-    int start, end, mem_l; int score;
+    int start, end; int score;
     int8_t is_tracked;
 } dp_t;
 
