@@ -1,16 +1,26 @@
 # TideHunter: efficient and sensitive tandem repeat detection from noisy long-reads using seed-and-chain
 
 ## Getting started
-	git clone https://github.com/yangao07/TideHunter.git --recursive
-	cd TideHunter; make
-	./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+Download the [latest release](https://github.com/yangao07/TideHunter/releases):
+```
+wget https://github.com/Xinglab/TideHunter/releases/download/v1.0/TideHunter.v1.0.tar.gz
+tar -zxvf TideHunter.v1.0.tar.gz
+cd TideHunter; make
+./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+```
+Or use `git clone` command:
+```
+git clone https://github.com/yangao07/TideHunter.git --recursive
+cd TideHunter; make
+./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+```
 
 ## Table of Contents
 
 - [Introduction](#introduction)
 - [Installation](#install)
   - [Operating system](#os)
-  - [Cloning and building TideHunter](#build)
+  - [Building TideHunter](#build)
 - [Getting started with toy example in `test_data`](#start)
 - [Usage](#usage)
   - [Generate consensus in FASTA format](#fasta_cons)
@@ -28,7 +38,7 @@
 TideHunter is an efficient and sensitive tandem repeat detection and
 consensus calling tool which is designed for tandemly repeated
 long-read sequence ([INC-seq](https://doi.org/10.1186/s13742-016-0140-7),
-[R2C2](https://doi.org/10.1073/pnas.1806447115)). 
+ [R2C2](https://doi.org/10.1073/pnas.1806447115), [NanoAmpli-Seq](https://doi.org/10.1093/gigascience/giy140)). 
 
 It works with Pacific Biosciences (PacBio) and 
 Oxford Nanopore Technologies (ONT) sequencing data at error rates 
@@ -38,7 +48,16 @@ up to 20% and is able to detect repeat patterns of any size.
 ### <a name="os"></a>Operating system
 TideHunter currently can only be built and run on Linux/Unix systems.
 
-### <a name="build"></a>Cloning and building TideHunter
+### <a name="build"></a>Building TideHunter
+It is recommended to download the latest release version of TideHunter 
+from the [release page](https://github.com/yangao07/TideHunter/releases).
+```
+wget https://github.com/Xinglab/TideHunter/releases/download/v1.0/TideHunter.v1.0.tar.gz
+tar -zxvf TideHunter.v1.0.tar.gz
+cd TideHunter; make
+```
+Or, you can use `git clone` command to download the source code. Do NOT forget the `--recursive`.
+This gives you the latest version of TideHunter, which might be still under development.
 ```
 git clone https://github.com/yangao07/TideHunter.git --recursive
 cd TideHunter; make
@@ -77,7 +96,7 @@ Options:
          -c --min-copy    [INT]    minimum copy number of tandem-repeats. [2]
          -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [0.25]
          -p --min-period  [INT]    minimum period size of tandem repeat. (>=2) [30]
-         -P --max-period  [INT]    maximum period size of tandem repeat. (<=65535) [65535]
+         -P --max-period  [INT]    maximum period size of tandem repeat. (<=4294967295) [100K]
     Adapter sequence:
          -5 --five-prime  [STR]    5' adapter sequence (sense strand). [NULL]
          -3 --three-prime [STR]    3' adapter sequence (anti-sense strand). [NULL]
