@@ -49,7 +49,7 @@ up to 20% and is able to detect repeat patterns of any size.
 TideHunter currently can only be built and run on Linux/Unix systems.
 
 ### <a name="build"></a>Building TideHunter
-It is recommended to download the latest release version of TideHunter 
+It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
 wget https://github.com/Xinglab/TideHunter/releases/download/v1.0/TideHunter.v1.0.tar.gz
