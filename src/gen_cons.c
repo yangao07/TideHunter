@@ -3,7 +3,7 @@
 #include <math.h>
 #include "tide_hunter.h"
 #include "edlib_align.h"
-#include "abpoa_align.h"
+#include "abpoa_cons.h"
 #include "ksw2_align.h"
 #include "utils.h"
 

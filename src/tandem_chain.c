@@ -222,12 +222,29 @@ int copy_chain(chain_t *src_ch, int seq_len, int start_i, int end_i, chain_t **d
 }
 
 // TODO max allowed fold
-int get_period_penalty(int P, triple_t *period, int p_n) {
-    int i, pp = 0;
+uint64_t get_period_penalty(int P, triple_t *period, int p_n) {
+    int i; uint64_t pp = 0;
     for (i = 0; i < p_n; ++i) {
         pp += get_period_penalty1(P, period[i].x);
     }
     return pp;
+}
+
+int get_adj_dis_penalty(dp_t **dp, chain_t *ch, int i) {
+    int adj_ave_dis;
+    cell_t c1, c2, c;
+    c = ch->cell[i];
+    if (i == 0) {
+        c2 = ch->cell[i+1];
+        adj_ave_dis = dp[c2.i][c2.j].start - dp[c.i][c.j].start + dp[c2.i][c2.j].end - dp[c.i][c.j].end;
+    } else if (i == ch->len-1) {
+        c1 = ch->cell[i-1];
+        adj_ave_dis = dp[c.i][c.j].start - dp[c1.i][c1.j].start + dp[c.i][c.j].end - dp[c1.i][c1.j].end;
+    } else {
+        c1 = ch->cell[i-1]; c2 = ch->cell[i+1];
+        adj_ave_dis = (dp[c2.i][c.j].start - dp[c1.i][c1.j].start + dp[c2.i][c2.j].end - dp[c1.i][c1.j].end) / 2;
+    }
+    return ilog2_32(adj_ave_dis) / 2;
 }
 
 // calculate period for each hit
@@ -242,16 +259,16 @@ void get_medoid_period(dp_t **dp, chain_t *ch) {
         t[i].x = d.end - d.start; t[i].y = d.start; t[i].z = i;
     }
     qsort(t, ch->len, sizeof(triple_t), triple_i_cmp);
-    int last_p = -1, pp, min_pp = INT32_MAX;
+    int last_p = -1; uint64_t pp, min_pp = UINT64_MAX;
     ch->est_period = 0;
     for (i = 0; i < ch->len; ++i) {
         if (t[i].x == last_p) continue;
         if (t[i].x > ch->max_period) ch->max_period = t[i].x;
         if (t[i].x < ch->min_period) ch->min_period = t[i].x;
         last_p = t[i].x;
-        pp = get_period_penalty(t[i].x, t, ch->len);
+        pp = get_period_penalty(t[i].x, t, ch->len) + get_adj_dis_penalty(dp, ch, t[i].z) * ch->len;
 #ifdef __DEBUG__
-        printf("p: %d, penalty: %d\n", t[i].x, pp);
+        printf("p: %d, penalty: %lld\n", t[i].x, pp);
 #endif
         if (pp < min_pp) {
             ch->est_period = t[i].x; ch->est_start = t[i].y; ch->est_ch_i = t[i].z;

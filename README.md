@@ -42,7 +42,7 @@ long-read sequence ([INC-seq](https://doi.org/10.1186/s13742-016-0140-7),
 
 It works with Pacific Biosciences (PacBio) and 
 Oxford Nanopore Technologies (ONT) sequencing data at error rates 
-up to 20% and is able to detect repeat patterns of any size.
+up to 20% and does not have any limitation of the maximal repeat pattern size.
 
 ## <a name="install"></a>Installation
 ### <a name="os"></a>Operating system
