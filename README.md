@@ -52,8 +52,8 @@ TideHunter currently can only be built and run on Linux/Unix systems.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.0/TideHunter.v1.0.tar.gz
-tar -zxvf TideHunter.v1.0.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter.v1.1.tar.gz
+tar -zxvf TideHunter.v*.tar.gz
 cd TideHunter; make
 ```
 Or, you can use `git clone` command to download the source code. Do NOT forget the `--recursive`.
@@ -110,6 +110,9 @@ Options:
                                        2: Tabular
     Computing resource:
          -t --thread      [INT]    number of threads to use. [1]
+
+    General options:
+         -h --help                 print this help usage information.
 
 ```
 
