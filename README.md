@@ -4,7 +4,7 @@
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
 wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter.v1.1.tar.gz
-tar -zxvf TideHunter.v1.0.tar.gz
+tar -zxvf TideHunter.v*.tar.gz
 cd TideHunter; make
 ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
