@@ -8,7 +8,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.0";
+const char VERSION[20] = "1.1";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -39,6 +39,7 @@ const struct option mini_tandem_opt [] = {
 	{ "thread", 1, NULL, 't' },
 
     { "help", 0, NULL, 'h' },
+    { "version", 0, NULL, 'v' },
 	{ 0, 0, 0, 0}
 };
 
@@ -111,6 +112,7 @@ static int usage(void)
 
     err_printf("    General options:\n");
     err_printf("         -h --help                 print this help usage information.\n");
+    err_printf("         -v --version              show version number.\n");
 
 	err_printf("\n");
 	return 1;
@@ -341,10 +343,12 @@ int main(int argc, char *argv[])
 	mini_tandem_para *mtp = mini_tandem_init_para();
 	int c, op_idx;
 	double realtime0 = realtime();
-	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhc:e:p:P:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
+	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
             case 'h': return usage();
+            case 'v': printf("%s\n", VERSION); goto End; break;
+
 			case 'k': mtp->k = atoi(optarg); 
 			          if (mtp->k > MAX_KMER_SIZE) {
 			          	  err_printf("\n[main] Error: k-mer length can not be larger than %d (%ld).\n", MAX_KMER_SIZE, mtp->k);
@@ -408,8 +412,8 @@ int main(int argc, char *argv[])
 		err_printf("\n[main] Warning: only 5' adapter sequence is provided. Full-length sequence cannot be determined.\n");
 	mtp->div_exp = get_div_exp(mtp->k, mtp->max_div);
 	mini_tandem(argv[optind], mtp);
+	err_func_printf(__func__, "Real time: %.3f sec; CPU: %.3f sec; Peak RSS: %.3f GB\n", realtime() - realtime0, cputime(), peakrss() / 1024.0 / 1024.0 / 1024.0);
 End:
 	mini_tandem_free_para(mtp);
-	err_func_printf(__func__, "Real time: %.3f sec; CPU: %.3f sec; Peak RSS: %.3f GB\n", realtime() - realtime0, cputime(), peakrss() / 1024.0 / 1024.0 / 1024.0);
 	return 0;
 }

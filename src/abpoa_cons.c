@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../abPOA/include/abpoa.h"
+#include "abpoa.h"
 
 int abpoa_msa(uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq) {
     int i, seq_n, cons_len = 0;
