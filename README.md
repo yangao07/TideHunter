@@ -56,16 +56,16 @@ wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter-v1
 tar -zxvf TideHunter-v1.1.tar.gz
 cd TideHunter; make
 ```
-If you meet any compiling issue, please try the pre-built binary file:
-```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter-v1.1_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.1_x64-linux.tar.gz
-```
 Or, you can use `git clone` command to download the source code. Do NOT forget the `--recursive`.
 This gives you the latest version of TideHunter, which might be still under development.
 ```
 git clone https://github.com/yangao07/TideHunter.git --recursive
 cd TideHunter; make
+```
+If you meet any compiling issue, please try the pre-built binary file:
+```
+wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter-v1.1_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.1_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
