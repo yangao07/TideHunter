@@ -1,4 +1,5 @@
 # TideHunter: efficient and sensitive tandem repeat detection from noisy long-reads using seed-and-chain
+[![Github All Releases](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg)]()
 
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
