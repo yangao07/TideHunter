@@ -7,8 +7,8 @@
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter-v1.1.tar.gz
-tar -zxvf TideHunter-v1.1.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.1.1/TideHunter-v1.1.1.tar.gz
+tar -zxvf TideHunter-v1.1.1.tar.gz
 cd TideHunter; make
 ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
@@ -56,8 +56,8 @@ TideHunter currently can only be built and run on Linux/Unix systems.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter-v1.1.tar.gz
-tar -zxvf TideHunter-v1.1.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.1.1/TideHunter-v1.1.1.tar.gz
+tar -zxvf TideHunter-v1.1.1.tar.gz
 cd TideHunter; make
 ```
 Or, you can use `git clone` command to download the source code. Do NOT forget the `--recursive`.
@@ -68,8 +68,8 @@ cd TideHunter; make
 ```
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1/TideHunter-v1.1_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.1_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.1.1/TideHunter-v1.1.1_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.1.1_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
