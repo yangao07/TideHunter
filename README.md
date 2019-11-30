@@ -1,5 +1,8 @@
 # TideHunter: efficient and sensitive tandem repeat detection from noisy long-reads using seed-and-chain
-[![Github All Releases](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
+[![Github All Releases](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?label=Download)](https://github.com/yangao07/TideHunter/releases)
+[![Latest Release](https://img.shields.io/github/release/yangao07/TideHunter.svg?label=Release)](https://github.com/yangao07/TideHunter/releases/latest)
+[![Build Status](https://travis-ci.org/yangao07/TideHunter.svg?branch=master)](https://travis-ci.org/yangao07/TideHunter)
+[![Published in Bioinformatics](https://img.shields.io/badge/Published%20in-Bioinformatics-purple.svg)](https://doi.org/10.1093/bioinformatics/btz376)
 <!--
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
