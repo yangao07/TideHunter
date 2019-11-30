@@ -2,6 +2,8 @@
 [![Github All Releases](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?label=Download)](https://github.com/yangao07/TideHunter/releases)
 [![Latest Release](https://img.shields.io/github/release/yangao07/TideHunter.svg?label=Release)](https://github.com/yangao07/TideHunter/releases/latest)
 [![Build Status](https://travis-ci.org/yangao07/TideHunter.svg?branch=master)](https://travis-ci.org/yangao07/TideHunter)
+[![License](https://img.shields.io/badge/License-GPL-black.svg)](https://github.com/yangao07/TideHunter/blob/master/LICENSE)
+[![GitHub Issues](https://img.shields.io/github/issues/yangao07/TideHunter.svg?label=Issues)](https://github.com/yangao07/TideHunter/issues)
 [![Published in Bioinformatics](https://img.shields.io/badge/Published%20in-Bioinformatics-purple.svg)](https://doi.org/10.1093/bioinformatics/btz376)
 <!--
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
