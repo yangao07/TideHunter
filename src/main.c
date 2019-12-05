@@ -8,7 +8,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.1";
+const char VERSION[20] = "1.1.1";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -57,7 +57,7 @@ static inline int64_t th_parse_num(const char *str)
 static int usage(void)
 {
 	err_printf("\n");
-	err_printf("%s: Tandem repeat detection and consensus calling from noisy long-reads\n\n", PROG);
+	err_printf("%s: Tandem repeats detection and consensus calling from noisy long-reads\n\n", PROG);
 
 	time_t t; time(&t);
 	err_printf("Version: %s\n", VERSION);
@@ -78,7 +78,7 @@ static int usage(void)
 
 	err_printf("    Tandem repeat criteria:\n");
 	// TODO min_copy < 2 ???
-	err_printf("         -c --min-copy    [INT]    minimum copy number of tandem-repeats. [%d]\n", MIN_COPY);
+	err_printf("         -c --min-copy    [INT]    minimum copy number of tandem repeat. [%d]\n", MIN_COPY);
 	err_printf("         -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [%.2f]\n", MAX_DIV);
 	err_printf("         -p --min-period  [INT]    minimum period size of tandem repeat. (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
 	err_printf("         -P --max-period  [INT]    maximum period size of tandem repeat. (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
@@ -192,8 +192,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
 		_tseq->cons_seq->seq.l = 0;
 		cons_seq_start = cons_seq_end = 0;
 	}
-	if (mtp->detail_fp != NULL) {
-	}
+    // if (mtp->detail_fp != NULL) { }
 }
 
 static void *mini_tandem_thread_main(void *aux)
@@ -211,7 +210,7 @@ static void *mini_tandem_thread_main(void *aux)
 		// generate cons_seq from seq , cons_seq may have multiple seqs
 		tide_hunter_core(read_seq, tandem_seq, mtp);
 	}
-	return aux;
+    pthread_exit(0);
 }
 
 tandem_seq_t *alloc_tandem_seq(int n) {

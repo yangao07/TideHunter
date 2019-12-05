@@ -61,7 +61,7 @@ typedef struct {
     mini_tandem_para *mtp;
     int n_seqs; kseq_t *read_seq; tandem_seq_t *tseq;
     // auxiliary memory for computing
-    int8_t **hit_array; int array_m; // for finding max hit
+    // int8_t **hit_array; int array_m; // for finding max hit
 } thread_aux_t;
 
 
