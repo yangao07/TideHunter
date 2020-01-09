@@ -57,7 +57,7 @@ static inline int64_t th_parse_num(const char *str)
 static int usage(void)
 {
 	err_printf("\n");
-	err_printf("%s: Tandem repeats detection and consensus calling from noisy long-reads\n\n", PROG);
+	err_printf("%s: Tandem repeats detection and consensus calling from noisy long reads\n\n", PROG);
 
 	time_t t; time(&t);
 	err_printf("Version: %s\n", VERSION);

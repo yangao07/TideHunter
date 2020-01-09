@@ -76,6 +76,8 @@ If you meet any compiling issue, please try the pre-built binary file:
 wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0_x64-linux.tar.gz
 tar -zxvf TideHunter-v1.2.0_x64-linux.tar.gz
 ```
+You will see three binary files: `TideHunter-xxx-xxxbits` built with different SIMD instructions.
+Please always first try the most up-to-date SIMD instruction version that is available on your machine (avx2>sse41>sse2).
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
 ```
