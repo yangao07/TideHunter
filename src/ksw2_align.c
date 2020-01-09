@@ -147,7 +147,7 @@ int ksw2_global_with_cigar(const uint8_t *query, int qlen, const uint8_t *target
     *n_cigar = ez.n_cigar;
     *cigar = ez.cigar;
     // if (ez.cigar) free(ez.cigar);
-    return iden_n; 
+    return iden_n;
 }
 
 void ksw2_right_ext(const uint8_t *query, int qlen, const uint8_t *target, int tlen, int *max_q, int *max_t) {

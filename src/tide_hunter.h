@@ -53,6 +53,7 @@ typedef struct {
     int *cons_start, *cons_end, *cons_len; double *copy_num;
     // int8_t *splint_rotated; // use cons_len to partition cons_seq when cons_n > 1
     int8_t *full_length;
+    int **sub_pos; int *pos_n, *pos_m;
     int *cons_score;
 } tandem_seq_t;
 

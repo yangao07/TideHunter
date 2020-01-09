@@ -7,7 +7,7 @@
 #include "ksw2_align.h"
 #include "utils.h"
 
-void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, mini_tandem_para *mtp, int8_t full_length) {
+void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, mini_tandem_para *mtp, int8_t full_length, int *par_pos, int pos_n) {
     if (cons_len < mtp->min_p || cons_len > mtp->max_p) return;
     if (mtp->only_longest && tseq->cons_n == 1) {
         if (end-start > tseq->cons_end[0]-tseq->cons_start[0]) {
@@ -20,6 +20,7 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int
     }
     strcpy(tseq->cons_seq->seq.s + tseq->cons_seq->seq.l, cons_seq); tseq->cons_seq->seq.l += cons_len; 
 
+    int i;
     if (tseq->cons_n == tseq->cons_m) {
         tseq->cons_m <<= 1;
         tseq->cons_start = (int*)_err_realloc(tseq->cons_start, tseq->cons_m * sizeof(int));
@@ -28,20 +29,33 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int
         tseq->full_length = (int8_t*)_err_realloc(tseq->full_length, tseq->cons_m * sizeof(int8_t));
         tseq->cons_len = (int*)_err_realloc(tseq->cons_len, tseq->cons_m * sizeof(int));
         tseq->cons_score = (int*)_err_realloc(tseq->cons_score, tseq->cons_m * sizeof(int));
+        tseq->sub_pos = (int**)_err_realloc(tseq->sub_pos, tseq->cons_m * sizeof(int*));
+        tseq->pos_n = (int*)_err_realloc(tseq->pos_n, tseq->cons_n * sizeof(int));
+        tseq->pos_m = (int*)_err_realloc(tseq->pos_m, tseq->cons_n * sizeof(int));
+        for (i = tseq->cons_n; i < tseq->cons_m; ++i) {
+            tseq->pos_m[i] = 0; tseq->pos_n[i] = 0;
+            tseq->sub_pos[i] = 0;
+        }
     }
     tseq->cons_start[tseq->cons_n] = start; tseq->cons_end[tseq->cons_n] = end; tseq->copy_num[tseq->cons_n] = copy_num;
     tseq->full_length[tseq->cons_n] = full_length;
     tseq->cons_len[tseq->cons_n] = cons_len; tseq->cons_score[tseq->cons_n] = 0; // TODO cons_score
+    tseq->pos_n[tseq->cons_n] = pos_n;
+    if (pos_n > tseq->pos_m[tseq->cons_n]) {
+        tseq->pos_m[tseq->cons_n] = pos_n;
+        tseq->sub_pos[tseq->cons_n] = (int*)_err_realloc(tseq->sub_pos[tseq->cons_n], pos_n * sizeof(int));
+    }
+    for (i = 0; i < pos_n; ++i) tseq->sub_pos[tseq->cons_n][i] = par_pos[i];
     ++tseq->cons_n;
 }
 
 void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t *tseq, mini_tandem_para *mtp) {
-        int start, end, cons_len=0;
+        int cons_len=0;
         char *cons_seq = (char*)_err_malloc(seq_len * sizeof(char));
         uint8_t *cons_bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
 #ifdef __DEBUG__
         {
-            int i, j, seq_i = 0; 
+            int i, j, seq_i = 0, start, end; 
             for (i = 0; i < par_n-1; ++i) {
                 if (par_pos[i] >= 0 && par_pos[i+1] >= 0) {
                     start = par_pos[i], end = par_pos[i+1];
@@ -133,7 +147,7 @@ WRITE_CONS:
                 }
                 // write cons_seq into tseq
                 if (!(mtp->only_full_length) || full_length > 0)
-                    write_tandem_cons_seq(tseq, cons_seq, cons_len, cons_start, cons_end, copy_num, mtp, full_length);
+                    write_tandem_cons_seq(tseq, cons_seq, cons_len, cons_start, cons_end, copy_num, mtp, full_length, par_pos+i, j-i);
             }
             i = j + 1;
         }

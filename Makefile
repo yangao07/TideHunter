@@ -30,7 +30,6 @@ FLAG_SSE4       = -msse4
 FLAG_AVX2       = -mavx2
 FLAG_AVX512F    = -mavx512f
 FLAG_AVX512BW   = -mavx512bw
-SIMD_FLAG       = -msse
 
 # abPOA
 ABPOA_DIR = ./abPOA

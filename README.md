@@ -1,4 +1,4 @@
-# TideHunter: efficient and sensitive tandem repeat detection from noisy long-reads using seed-and-chain
+# TideHunter: efficient and sensitive tandem repeat detection from noisy long reads using seed-and-chain
 [![Github All Releases](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?label=Download)](https://github.com/yangao07/TideHunter/releases)
 [![Latest Release](https://img.shields.io/github/release/yangao07/TideHunter.svg?label=Release)](https://github.com/yangao07/TideHunter/releases/latest)
 [![Build Status](https://travis-ci.org/yangao07/TideHunter.svg?branch=master)](https://travis-ci.org/yangao07/TideHunter)
@@ -12,9 +12,9 @@
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1.1/TideHunter-v1.1.1.tar.gz
-tar -zxvf TideHunter-v1.1.1.tar.gz
-cd TideHunter-v1.1.1; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0.tar.gz
+tar -zxvf TideHunter-v1.2.0.tar.gz
+cd TideHunter-v1.2.0; make
 ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
 Or use `git clone` command:
@@ -61,9 +61,9 @@ TideHunter currently can only be built and run on Linux/Unix systems.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1.1/TideHunter-v1.1.1.tar.gz
-tar -zxvf TideHunter-v1.1.1.tar.gz
-cd TideHunter-v1.1.1; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0.tar.gz
+tar -zxvf TideHunter-v1.2.0.tar.gz
+cd TideHunter-v1.2.0; make
 ```
 Or, you can use `git clone` command to download the source code. Do NOT forget the `--recursive`.
 This gives you the latest version of TideHunter, which might be still under development.
@@ -73,8 +73,8 @@ cd TideHunter; make
 ```
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.1.1/TideHunter-v1.1.1_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.1.1_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.2.0_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
@@ -151,22 +151,23 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 |:---:|   :---      | ---        |
 |  1  | readName    | the original read name |
 |  2  | consN       | `N` is the ID number of the consensus sequences from the same read, starts from 0 |
-|  3  | readLen     | length of the original long-read |
-|  4  | start       | start coordinate of the tandem repeat, 1-base |
-|  5  | end         | end coordinate of the tandem repeat, 1-base |
+|  3  | readLen     | length of the original long read |
+|  4  | start       | start coordinate of the tandem repeat, 1-based |
+|  5  | end         | end coordinate of the tandem repeat, 1-based |
 |  6  | consLen     | length of the consensus sequence |
 |  7  | copyNum     | copy number of the tandem repeat |
 |  8  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
-|  9  | consensus   | consensus sequence |
+|  9  | subPos      | 1-based start coordinate of each tandem repeat unit sequence, separated by `,` |
+| 10  | consensus   | consensus sequence |
 
 ### <a name="fasta"></a>FASTA format
 For FASTA output format, the read name contains detailed information of the detected tandem repeat, 
-i.e., the above columns 1 ~ 8.
+i.e., the above columns 1 ~ 9.
 The sequence is the consensus sequence.
 
 The read name of each consensus sequence has the following format:
 ```
->readName_consN_readLen_start_end_consLen_copyNum_fullLen
+>readName_consN_readLen_start_end_consLen_copyNum_fullLen_subPos
 ```
 
 ## <a name="contact"></a>Contact

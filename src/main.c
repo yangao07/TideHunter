@@ -8,7 +8,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.1.1";
+const char VERSION[20] = "1.2.0";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -146,6 +146,13 @@ int mini_tandem_read_seq(kseq_t *read_seq, int chunk_read_n)
 	return n;
 }
 
+void read_seq_free(kseq_t *read_seq) {
+    free(read_seq->name.s); 
+    free(read_seq->comment.s); 
+    free(read_seq->seq.s); 
+    free(read_seq->qual.s);
+}
+
 thread_aux_t *aux_init(mini_tandem_para *mtp) {
 	int i;
 	thread_aux_t *aux = (thread_aux_t*)calloc(mtp->n_thread, sizeof(thread_aux_t));
@@ -177,10 +184,16 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
 		for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start,end
 			if (mtp->out_fmt == FASTA_FMT) {
 				// >readName_consN_readLen:start:end:consLen:copyNum:fullLength
-				fprintf(mtp->cons_out, ">%s_cons%d_%d_%d_%d_%d_%.1f_%d\n", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
+				fprintf(mtp->cons_out, ">%s_cons%d_%d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
+                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][i]+2);
+                for (i = 1; i < _tseq->pos_n[cons_i]; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                fprintf(mtp->cons_out, "\n");
 			} else if (mtp->out_fmt == TAB_FMT) {
 				// readName/consN/readLen/start/end/consLen/copyNum/fullLength
 				fprintf(mtp->cons_out, "%s\tcons%d\t%d\t%d\t%d\t%d\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
+                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][i]+2);
+                for (i = 1; i < _tseq->pos_n[cons_i]; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                fprintf(mtp->cons_out, "\t");
 			}
 			cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
 			for (i = cons_seq_start; i < cons_seq_end; ++i)  
@@ -198,7 +211,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
 static void *mini_tandem_thread_main(void *aux)
 {
 	thread_aux_t *a = (thread_aux_t*)aux;
-	int i = 0;
+	long i = 0;
 	while (1) {
 		pthread_rwlock_wrlock(&RWLOCK);
 		i = THREAD_READ_I++;
@@ -210,7 +223,7 @@ static void *mini_tandem_thread_main(void *aux)
 		// generate cons_seq from seq , cons_seq may have multiple seqs
 		tide_hunter_core(read_seq, tandem_seq, mtp);
 	}
-    pthread_exit(0);
+    return aux;
 }
 
 tandem_seq_t *alloc_tandem_seq(int n) {
@@ -225,10 +238,25 @@ tandem_seq_t *alloc_tandem_seq(int n) {
 		tseq[i].cons_len = (int*)_err_malloc(sizeof(int));
 		tseq[i].full_length = (int8_t*)_err_malloc(sizeof(int8_t));
 		tseq[i].cons_score = (int*)_err_malloc(sizeof(int));
+        tseq[i].pos_n = (int*)_err_calloc(1, sizeof(int));
+        tseq[i].pos_m = (int*)_err_calloc(1, sizeof(int));
+        tseq[i].sub_pos = (int**)_err_calloc(1, sizeof(int*));
 	}
 	return tseq;
 }
-
+void tandem_seq_free(tandem_seq_t *tseq) {
+    seq_t *cons_seq = tseq->cons_seq;
+    free(cons_seq->name.s); free(cons_seq->comment.s); free(cons_seq->seq.s); free(cons_seq->qual.s); 
+    free(tseq->cons_seq); 
+    free(tseq->cons_start); free(tseq->cons_end); 
+    free(tseq->cons_len); free(tseq->copy_num); 
+    free(tseq->full_length); free(tseq->cons_score); 
+    free(tseq->pos_n); free(tseq->pos_m);
+    int i;
+    for (i = 0; i < tseq->cons_m; ++i) 
+        if(tseq->sub_pos[i]) free(tseq->sub_pos[i]); 
+    free(tseq->sub_pos);
+}
 static inline double get_div_exp(int k, double div) {
 	return exp(2 * k * div);
 }
@@ -274,7 +302,7 @@ void mini_tandem_free_para(mini_tandem_para *mtp) {
 
 int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 {
-	int i, n_seqs;
+	int i, j, n_seqs;
 	gzFile readfp = xzopen(read_fn, "r");
 	kstream_t *fs = ks_init(readfp);
 	kseq_t *read_seq = (kseq_t*)calloc(CHUNK_READ_N, sizeof(kseq_t));
@@ -327,11 +355,10 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 
 	// free variables
 	for (i = 0; i < CHUNK_READ_N; ++i) {
-		free((read_seq+i)->name.s); free((read_seq+i)->comment.s); free((read_seq+i)->seq.s); free((read_seq+i)->qual.s);
-		seq_t *cons_seq = tseq[i].cons_seq;
-		free(cons_seq->name.s); free(cons_seq->comment.s); free(cons_seq->seq.s); free(cons_seq->qual.s); 
-		free(tseq[i].cons_seq); free(tseq[i].cons_start); free(tseq[i].cons_end); free(tseq[i].cons_len); free(tseq[i].copy_num); free(tseq[i].full_length); free(tseq[i].cons_score);
-	} free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp);
+        read_seq_free(read_seq+i);
+        tandem_seq_free(tseq+i);
+	} 
+    free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp);
 	aux_free(aux, mtp->n_thread);
 	return 0;
 }
