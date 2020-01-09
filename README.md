@@ -19,7 +19,7 @@ cd TideHunter-v1.2.0; make
 ```
 Or use `git clone` command:
 ```
-git clone https://github.com/yangao07/TideHunter.git --recursive
+git clone https://github.com/yangao07/TideHunter.git
 cd TideHunter; make
 ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
@@ -65,10 +65,10 @@ wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-
 tar -zxvf TideHunter-v1.2.0.tar.gz
 cd TideHunter-v1.2.0; make
 ```
-Or, you can use `git clone` command to download the source code. Do NOT forget the `--recursive`.
+Or, you can use `git clone` command to download the source code.
 This gives you the latest version of TideHunter, which might be still under development.
 ```
-git clone https://github.com/yangao07/TideHunter.git --recursive
+git clone https://github.com/yangao07/TideHunter.git
 cd TideHunter; make
 ```
 If you meet any compiling issue, please try the pre-built binary file:
