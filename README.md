@@ -159,7 +159,7 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 |  6  | consLen     | length of the consensus sequence |
 |  7  | copyNum     | copy number of the tandem repeat |
 |  8  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
-|  9  | subPos      | start coordinate of each tandem repeat unit sequence, followed by end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based |
+|  9  | subPos      | start coordinate of each tandem repeat unit sequence, followed by one end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based |
 | 10  | consensus   | consensus sequence |
 
 ### <a name="fasta"></a>FASTA format
