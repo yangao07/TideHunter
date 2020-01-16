@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "tide_hunter.h"
 
-typedef int64_t hash_t;
+typedef uint64_t hash_t;
 #define _8mask 0xff
 #define _16mask 0xffff
 #define _32mask 0xffffffff
@@ -13,7 +13,7 @@ typedef int64_t hash_t;
 // end:32 | period:32
 #define _set_hash_hit(end, period) (((end) << 32) | (period) )
 #define _get_hash_hit_end(hash_hit, i) ((hash_hit)[i] >> 32)
-#define _get_hash_hit_period(hash_hit, i) ((hash_hit)[i] & _32mask)
+#define _get_hash_hit_period(hash_hit, i) ((uint32_t)(hash_hit)[i])
 #define _get_hash_hit_start(hash_hit, i) (_get_hash_hit_end((hash_hit), i) - _get_hash_hit_period((hash_hit), i))
 
 #ifdef __cplusplus

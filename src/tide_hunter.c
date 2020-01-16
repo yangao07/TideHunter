@@ -29,8 +29,8 @@ int tide_hunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp
     hash_t *hit_h;
     int hit_n = collect_tandem_repeat_hit(bseq, seq_len, mtp, &hit_h);
     // chaining by DP
-    dp_t **dp; int tot_n; chain_t *chain; int ch_m;
-    int ch_n = tandem_chain(seq_len, hit_h, hit_n, mtp, &dp, &tot_n, &chain, &ch_m);
+    dp_t **dp; int tot_n=0; chain_t *chain; int ch_m=0;
+    int ch_n = tandem_chain(seq_len, hit_h, hit_n, mtp, &dp, &tot_n, &chain, &ch_m); free(hit_h);
     int ch_i, i; chain_t ch;
     for (ch_i = 0; ch_i < ch_n; ++ch_i) {
         // partition seq into segments
@@ -44,8 +44,12 @@ int tide_hunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp
         seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp);
     }
 
-    free(hit_h); free(bseq);
-    for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain);
-    for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
+    free(bseq);
+    if (ch_m > 0) {
+        for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain);
+    }
+    if (tot_n > 0) {
+        for (i = 0; i <= tot_n; ++i) free(dp[i]); free(dp); 
+    }
     return 0;
 }

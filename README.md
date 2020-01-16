@@ -12,9 +12,9 @@
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0.tar.gz
-tar -zxvf TideHunter-v1.2.0.tar.gz
-cd TideHunter-v1.2.0; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.1/TideHunter-v1.2.1.tar.gz
+tar -zxvf TideHunter-v1.2.1.tar.gz
+cd TideHunter-v1.2.1; make
 ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
 Or use `git clone` command:
@@ -61,9 +61,9 @@ TideHunter currently can only be built and run on Linux/Unix systems.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0.tar.gz
-tar -zxvf TideHunter-v1.2.0.tar.gz
-cd TideHunter-v1.2.0; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.1/TideHunter-v1.2.1.tar.gz
+tar -zxvf TideHunter-v1.2.1.tar.gz
+cd TideHunter-v1.2.1; make
 ```
 Or, you can use `git clone` command to download the source code.
 This gives you the latest version of TideHunter, which might be still under development.
@@ -73,10 +73,10 @@ cd TideHunter; make
 ```
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.2.0/TideHunter-v1.2.0_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.2.0_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.1/TideHunter-v1.2.1_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.2.1_x64-linux.tar.gz
 ```
-You will see three binary files: `TideHunter-xxx-xxxbits` built with different SIMD instructions.
+You will see three binary files: `TideHunter-xxxx-xxxbits` built with different SIMD instructions.
 Please always first try the most up-to-date SIMD instruction version that is available on your machine (avx2>sse41>sse2).
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
@@ -159,7 +159,7 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 |  6  | consLen     | length of the consensus sequence |
 |  7  | copyNum     | copy number of the tandem repeat |
 |  8  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
-|  9  | subPos      | 1-based start coordinate of each tandem repeat unit sequence, separated by `,` |
+|  9  | subPos      | start coordinate of each tandem repeat unit sequence, followed by end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based |
 | 10  | consensus   | consensus sequence |
 
 ### <a name="fasta"></a>FASTA format

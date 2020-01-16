@@ -138,10 +138,10 @@ clean_abPOA:
 	cd $(wd);
 
 clean_ksw2:
-	rm $(KSW2_DIR)/*.o
+	rm -f $(KSW2_DIR)/*.o
 
 clean_edlib:
-	rm $(EDLIB)
+	rm -f $(EDLIB)
 
 clean_all: clean clean_abPOA clean_ksw2 clean_edlib 
 

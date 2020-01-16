@@ -8,7 +8,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.2.0";
+const char VERSION[20] = "1.2.1";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -185,15 +185,15 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
 			if (mtp->out_fmt == FASTA_FMT) {
 				// >readName_consN_readLen:start:end:consLen:copyNum:fullLength
 				fprintf(mtp->cons_out, ">%s_cons%d_%d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
-                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][i]+2);
-                for (i = 1; i < _tseq->pos_n[cons_i]; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
-                fprintf(mtp->cons_out, "\n");
+                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
+                for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
 			} else if (mtp->out_fmt == TAB_FMT) {
 				// readName/consN/readLen/start/end/consLen/copyNum/fullLength
 				fprintf(mtp->cons_out, "%s\tcons%d\t%d\t%d\t%d\t%d\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
-                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][i]+2);
+                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                 for (i = 1; i < _tseq->pos_n[cons_i]; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
-                fprintf(mtp->cons_out, "\t");
+                fprintf(mtp->cons_out, ",%d\t", _tseq->sub_pos[cons_i][i]+1);
 			}
 			cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
 			for (i = cons_seq_start; i < cons_seq_end; ++i)  
@@ -220,6 +220,7 @@ static void *mini_tandem_thread_main(void *aux)
 		mini_tandem_para *mtp = a->mtp;
 		kseq_t *read_seq = a->read_seq + i; 
 		tandem_seq_t *tandem_seq = a->tseq + i;
+        // fprintf(stderr, "%s\n", read_seq->name.s); // for debug
 		// generate cons_seq from seq , cons_seq may have multiple seqs
 		tide_hunter_core(read_seq, tandem_seq, mtp);
 	}

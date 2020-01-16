@@ -284,6 +284,7 @@ void get_medoid_period(dp_t **dp, chain_t *ch) {
 // hash_hit: hash table of mem hits
 // TODO allocate DP matrix uniformly
 int tandem_chain(int seq_len, hash_t *hash_hit, int hash_hit_n, mini_tandem_para *mtp, dp_t ***_dp, int *tot_N, chain_t **post_chain, int *post_ch_m) {
+    if (hash_hit_n < 2) return 0;
     int i, j, k, idx, kmer_k = mtp->k;
     // calculate DP matrix size, allocate DP matrix
     int tot_n = 1, *array_size, *hash_index;

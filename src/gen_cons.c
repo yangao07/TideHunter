@@ -30,8 +30,8 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int
         tseq->cons_len = (int*)_err_realloc(tseq->cons_len, tseq->cons_m * sizeof(int));
         tseq->cons_score = (int*)_err_realloc(tseq->cons_score, tseq->cons_m * sizeof(int));
         tseq->sub_pos = (int**)_err_realloc(tseq->sub_pos, tseq->cons_m * sizeof(int*));
-        tseq->pos_n = (int*)_err_realloc(tseq->pos_n, tseq->cons_n * sizeof(int));
-        tseq->pos_m = (int*)_err_realloc(tseq->pos_m, tseq->cons_n * sizeof(int));
+        tseq->pos_n = (int*)_err_realloc(tseq->pos_n, tseq->cons_m * sizeof(int));
+        tseq->pos_m = (int*)_err_realloc(tseq->pos_m, tseq->cons_m * sizeof(int));
         for (i = tseq->cons_n; i < tseq->cons_m; ++i) {
             tseq->pos_m[i] = 0; tseq->pos_n[i] = 0;
             tseq->sub_pos[i] = 0;

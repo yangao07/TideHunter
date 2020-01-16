@@ -43,7 +43,7 @@ int abpoa_msa(uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bs
         abpoa_cigar_t *abpoa_cigar = 0; int n_cigar = 0;
         abpoa_align_sequence_with_graph(ab, bseqs+start+1, end-start, abpt, &n_cigar, &abpoa_cigar);
 
-        abpoa_add_graph_alignment(ab->abg, abpt, bseqs+start+1, end-start, n_cigar, abpoa_cigar, i, 1);
+        abpoa_add_graph_alignment(ab->abg, abpt, bseqs+start+1, end-start, n_cigar, abpoa_cigar, i, (pos_n-2)/64+1);
         if (n_cigar) free(abpoa_cigar);
         ++seq_n;
     }
