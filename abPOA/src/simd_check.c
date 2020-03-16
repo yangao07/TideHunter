@@ -230,13 +230,13 @@ int main(void) {
     else if (simd_flag & SIMD_SSE41) printf("__SSE4_1__\n"), t = 1;
     else printf("NO SIMD\n"), t = 0;
 
-    char msg[100], i;
-    fprintf(stderr, "\n");
-    sprintf(msg, "==== %s will be used. ====", simd_label[t]);
-    for (i = 0; msg[i]; ++i) fprintf(stderr, "="); fprintf(stderr, "\n");
-    fprintf(stderr, "%s\n",msg);
-    for (i = 0; msg[i]; ++i) fprintf(stderr, "="); fprintf(stderr, "\n");
-    fprintf(stderr, "\n");
+    // char msg[100], i;
+    // fprintf(stderr, "\n");
+    // sprintf(msg, "==== %s will be used. ====", simd_label[t]);
+    // for (i = 0; msg[i]; ++i) fprintf(stderr, "="); fprintf(stderr, "\n");
+    // fprintf(stderr, "%s\n",msg);
+    // for (i = 0; msg[i]; ++i) fprintf(stderr, "="); fprintf(stderr, "\n");
+    // fprintf(stderr, "\n");
     return simd_flag;
 }
 #endif

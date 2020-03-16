@@ -4,9 +4,17 @@ CFLAGS   =	 -Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-
 CPPFLAGS =   -std=c++11
 
 # for debug
-ifneq ($(gdb),)
-	CFLAGS   =	 -g -Wall -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -D __DEBUG__
+ifneq ($(debug),)
+	DFLAGS   = -D __DEBUG__
 endif
+
+# for gdb
+ifneq ($(gdb),)
+	CFLAGS   =	 -g -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+else
+	CFLAGS  =	 -O3 -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+endif
+
 # for gprof
 ifneq ($(pg),)
 	PG_FLAG  =   -pg
@@ -51,6 +59,9 @@ ifneq ($(sse2),)
 	KSW2_SIMD_FLAG = -msse2 -mno-sse4.1
 	ABPOA_SIMD_FLAG = "sse2=1"
 else ifneq ($(sse41),)
+	KSW2_SIMD_FLAG = -msse4.1
+	ABPOA_SIMD_FLAG = "sse41=1"
+else ifneq ($(sse4),)
 	KSW2_SIMD_FLAG = -msse4.1
 	ABPOA_SIMD_FLAG = "sse41=1"
 else ifneq ($(avx2),)
@@ -98,11 +109,11 @@ TideHunter: $(BIN)
 
 $(BIN): $(OBJS) $(ABPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(OBJS) $(ABPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
+	$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
-	$(CPP) -c $< -I $(EDLIB_INCLUDE) -o $@
+	$(CPP) $(CFLAGS) -c $< -I $(EDLIB_INCLUDE) -o $@
 
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h 
 	$(CPP) -c $(CPPFLAGS) $< -I $(EDLIB_INCLUDE) -o $@

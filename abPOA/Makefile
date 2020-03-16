@@ -2,9 +2,15 @@ CC      =	gcc
 CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-misleading-indentation
 
 # for debug
+ifneq ($(debug),)
+	DFLAGS   = -D __DEBUG__
+endif
+
+# for gdb
 ifneq ($(gdb),)
-	#CFLAGS   =	 -Wall -O3 -D __DEBUG__ -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-misleading-indentation
-	CFLAGS   =	 -g -Wall -D __DEBUG__ -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-misleading-indentation
+	CFLAGS   =	 -g -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+else
+	CFLAGS  =	 -O3 -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 endif
 
 ifneq ($(old),)
