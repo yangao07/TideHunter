@@ -118,8 +118,9 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 
 # abPOA
 $(ABPOALIB): 
+	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	cd $(ABPOA_DIR); \
-	make simd_check; make libabpoa PREFIX=$(PWD) $(ABPOA_SIMD_FLAG) 
+	make simd_check PREDIR=$(PWD); make libabpoa PREDIR=$(PWD) $(ABPOA_SIMD_FLAG) 
 
 # ksw2
 $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h

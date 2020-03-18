@@ -23,9 +23,9 @@ ifneq ($(pg),)
 endif
 
 LIB     =	-lm -lz -lpthread
-ifneq ($(PREFIX),)
-	BIN_DIR =	$(PREFIX)/bin
-	LIB_DIR =   $(PREFIX)/lib
+ifneq ($(PREDIR),)
+	BIN_DIR =	$(PREDIR)/bin
+	LIB_DIR =   $(PREDIR)/lib
 else
 	BIN_DIR =	./bin
 	LIB_DIR =   ./lib
@@ -53,7 +53,7 @@ FLAG_AVX512F    = -mavx512f
 FLAG_AVX512BW   = -mavx512bw
 SIMD_FLAG       = -msse2
 
-simd_flag := ${shell ./bin/simd_check 2> /dev/null}
+simd_flag := ${shell ${BIN_DIR}/simd_check 2> /dev/null}
 
 ifeq ($(simd_flag), $(AVX512BW))
 	SIMD_FLAG = $(FLAG_AVX512BW)
@@ -97,7 +97,7 @@ libabpoa:       $(ABPOALIB)
 example:        $(EXAMPLE)
 
 simd_check:$(SIMD_CHECK)
-	$(shell ./bin/simd_check > /dev/null)
+	$(shell ${BIN_DIR}/simd_check > /dev/null)
 
 $(SIMD_CHECK):$(SRC_DIR)/simd_check.c $(SRC_DIR)/simd_instruction.h
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
@@ -125,4 +125,4 @@ $(SRC_DIR)/simd_abpoa_align.o:$(SRC_DIR)/simd_abpoa_align.c $(SRC_DIR)/abpoa_gra
 	$(CC) -c $(CFLAGS) $(SIMD_FLAG) $< -o $@
 
 clean:
-	rm -f $(SRC_DIR)/*.[oa] $(LIB_DIR)/*.[oa] $(BIN) #$(SIMD_CHECK)
+	rm -f $(SRC_DIR)/*.[oa] $(LIB_DIR)/*.[oa] $(BIN) $(SIMD_CHECK)
