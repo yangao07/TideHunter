@@ -23,8 +23,14 @@ ifneq ($(pg),)
 endif
 
 LIB     =	-lm -lz -lpthread
-BIN_DIR =	./bin
-LIB_DIR =   ./lib
+ifneq ($(PREFIX),)
+	BIN_DIR =	$(PREFIX)/bin
+	LIB_DIR =   $(PREFIX)/lib
+else
+	BIN_DIR =	./bin
+	LIB_DIR =   ./lib
+endif
+
 INC_DIR =   ./include
 SRC_DIR =   ./src
 

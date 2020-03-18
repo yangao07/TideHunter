@@ -24,6 +24,7 @@ endif
 #TODO different -I for different .c
 BIN_DIR =	./bin
 SRC_DIR =   ./src
+LIB_DIR =   ./lib
 LIB           = -lm -lz -lpthread
 
 INCLUDE       =
@@ -44,9 +45,7 @@ FLAG_AVX512BW   = -mavx512bw
 # abPOA
 ABPOA_DIR = ./abPOA
 ABPOA_INCLUDE = $(ABPOA_DIR)/include
-ABPOA_LIB_DIR = $(ABPOA_DIR)/lib
-ABPOALIB      = $(ABPOA_LIB_DIR)/libabpoa.a
-#ABPOALIB_FLAG = -L$(ABPOA_LIB_DIR) -labpoa
+ABPOALIB      = $(LIB_DIR)/libabpoa.a
 INCLUDE      += -I$(ABPOA_INCLUDE)
 ABPOA_SIMD_FLAG =
 
@@ -109,7 +108,6 @@ TideHunter: $(BIN)
 $(BIN): $(OBJS) $(ABPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB) $(LIB) -o $@ $(PG_FLAG)
-	#$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
@@ -121,7 +119,7 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 # abPOA
 $(ABPOALIB): 
 	cd $(ABPOA_DIR); \
-	make simd_check; make libabpoa $(ABPOA_SIMD_FLAG) 
+	make simd_check; make libabpoa PREFIX=$(PWD) $(ABPOA_SIMD_FLAG) 
 
 # ksw2
 $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
