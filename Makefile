@@ -10,9 +10,9 @@ endif
 
 # for gdb
 ifneq ($(gdb),)
-	CFLAGS   =	 -g -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+	CFLAGS   = -g -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 else
-	CFLAGS  =	 -O3 -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+	CFLAGS   = -O3 -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
 endif
 
 # for gprof
@@ -21,11 +21,13 @@ ifneq ($(pg),)
 	CFLAGS  +=   -pg
 endif
 
-# use abPOA, otherwise use spoa
-CFLAGS  +=   -D __ABPOA__
+#TODO different -I for different .c
+BIN_DIR =	./bin
+SRC_DIR =   ./src
+LIB           = -lm -lz -lpthread
 
-INCLUDE  =
-LIB      =	 -lm -lz -lpthread
+INCLUDE       =
+
 
 # edlib
 EDLIB_DIR     = ./edlib
@@ -43,8 +45,8 @@ FLAG_AVX512BW   = -mavx512bw
 ABPOA_DIR = ./abPOA
 ABPOA_INCLUDE = $(ABPOA_DIR)/include
 ABPOA_LIB_DIR = $(ABPOA_DIR)/lib
-ABPOALIB      = $(ABPOA_DIR)/lib/libabpoa.a
-ABPOALIB_FLAG = -L$(ABPOA_LIB_DIR) -labpoa
+ABPOALIB      = $(ABPOA_LIB_DIR)/libabpoa.a
+#ABPOALIB_FLAG = -L$(ABPOA_LIB_DIR) -labpoa
 INCLUDE      += -I$(ABPOA_INCLUDE)
 ABPOA_SIMD_FLAG =
 
@@ -77,9 +79,6 @@ endif
 
 
 
-#TODO different -I for different .c
-BIN_DIR =	./bin
-SRC_DIR =   ./src
 
 CSOURCE    = $(wildcard $(SRC_DIR)/*.c)
 CSOURCE   += $(wildcard $(KSW2_DIR)/*.c)
@@ -109,7 +108,8 @@ TideHunter: $(BIN)
 
 $(BIN): $(OBJS) $(ABPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
+	$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB) $(LIB) -o $@ $(PG_FLAG)
+	#$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB_FLAG) $(LIB) -o $@ $(PG_FLAG)
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
@@ -120,10 +120,8 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 
 # abPOA
 $(ABPOALIB): 
-	wd=$(PWD); \
 	cd $(ABPOA_DIR); \
-	make simd_check; make libabpoa $(ABPOA_SIMD_FLAG); \
-	cd $(wd);
+	make simd_check; make libabpoa $(ABPOA_SIMD_FLAG) 
 
 # ksw2
 $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
@@ -143,10 +141,8 @@ clean:
 	rm -f $(SRC_DIR)/*.o $(BIN)
 
 clean_abPOA:
-	wd=$(PWD);	\
 	rm -f $(ABPOALIB); \
 	cd $(ABPOA_DIR); make clean; \
-	cd $(wd);
 
 clean_ksw2:
 	rm -f $(KSW2_DIR)/*.o
