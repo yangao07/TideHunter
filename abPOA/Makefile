@@ -1,5 +1,4 @@
-CC      =	gcc
-CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function -Wno-misleading-indentation
+CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation
 
 # for debug
 ifneq ($(debug),)
@@ -31,6 +30,7 @@ else
 	LIB_DIR =   ./lib
 endif
 
+INCLUDE =
 INC_DIR =   ./include
 SRC_DIR =   ./src
 
@@ -78,7 +78,7 @@ else ifneq ($(avx512bw),)
 endif
 
 .c.o:
-		$(CC) -c $(CFLAGS) $< -o $@
+		$(CC) -c $(CFLAGS) $(INCLUDE) $< -o $@
 
 SIMD_CHECK  	= $(BIN_DIR)/simd_check
 BIN     		= $(BIN_DIR)/abPOA
@@ -101,14 +101,14 @@ simd_check:$(SIMD_CHECK)
 
 $(SIMD_CHECK):$(SRC_DIR)/simd_check.c $(SRC_DIR)/simd_instruction.h
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CC) $(SIMD_CHECK_D) $< -o $@
+	$(CC) $(SIMD_CHECK_D) $(INCLUDE) $< -o $@
 
 $(BIN):$(SRC_DIR)/abpoa.o $(ABPOALIB)
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CC) $(CFLAGS) $< -L$(LIB_DIR) -labpoa $(LIB) -o $@ $(PG_FLAG)
+	$(CC) $(CFLAGS) $< $(INCLUDE) -L$(LIB_DIR) -labpoa $(LIB) -o $@ $(PG_FLAG)
 
 $(EXAMPLE):example.c $(ABPOALIB)
-	$(CC) $(CFLAGS) $< -o $@ -I $(INC_DIR) -L $(LIB_DIR) -labpoa $(LIB)
+	$(CC) $(CFLAGS) $< $(INCLUDE) -o $@ -I $(INC_DIR) -L $(LIB_DIR) -labpoa $(LIB)
 
 $(ABPOALIB):$(OBJS)
 	if [ ! -d $(LIB_DIR) ]; then mkdir $(LIB_DIR); fi
@@ -116,13 +116,13 @@ $(ABPOALIB):$(OBJS)
 
 $(SRC_DIR)/abpoa.o:$(SRC_DIR)/abpoa.c $(SRC_DIR)/abpoa.h $(SRC_DIR)/abpoa_graph.h $(SRC_DIR)/agglo_hier_clu.h $(SRC_DIR)/abpoa_align.h \
 				   $(SRC_DIR)/align.h $(SRC_DIR)/utils.h $(SRC_DIR)/simd_instruction.h
-	$(CC) -c $(CFLAGS) $(SIMD_FLAG) $< -o $@
+	$(CC) -c $(CFLAGS) $(INCLUDE) $(SIMD_FLAG) $< -o $@
 
 $(SRC_DIR)/simd_check.o:$(SRC_DIR)/simd_check.c $(SRC_DIR)/simd_instruction.h
-	$(CC) -c $(CFLAGS) $(SIMD_FLAG) $< -o $@
+	$(CC) -c $(CFLAGS) $(INCLUDE) $(SIMD_FLAG) $< -o $@
 
 $(SRC_DIR)/simd_abpoa_align.o:$(SRC_DIR)/simd_abpoa_align.c $(SRC_DIR)/abpoa_graph.h $(SRC_DIR)/abpoa_align.h $(SRC_DIR)/simd_instruction.h $(SRC_DIR)/utils.h
-	$(CC) -c $(CFLAGS) $(SIMD_FLAG) $< -o $@
+	$(CC) -c $(CFLAGS) $(INCLUDE) $(SIMD_FLAG) $< -o $@
 
 clean:
 	rm -f $(SRC_DIR)/*.[oa] $(LIB_DIR)/*.[oa] $(BIN) $(SIMD_CHECK)

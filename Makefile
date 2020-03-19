@@ -1,7 +1,4 @@
-CC       =	 gcc
-CPP		 =   g++
-CFLAGS   =	 -Wall -g -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
-CPPFLAGS =   -std=c++11
+CFLAGS   =	 -Wall -g -O3 -Wno-unused-variable -Wno-unused-function
 
 # for debug
 ifneq ($(debug),)
@@ -10,9 +7,9 @@ endif
 
 # for gdb
 ifneq ($(gdb),)
-	CFLAGS   = -g -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+	CFLAGS   = -g -Wall ${DFLAGS}
 else
-	CFLAGS   = -O3 -Wall ${DFLAGS} -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-function
+	CFLAGS   += ${DFLAGS}
 endif
 
 # for gprof
@@ -20,6 +17,8 @@ ifneq ($(pg),)
 	PG_FLAG  =   -pg
 	CFLAGS  +=   -pg
 endif
+
+CPPFLAGS =  $(CFLAGS)
 
 #TODO different -I for different .c
 BIN_DIR =	./bin
@@ -34,7 +33,7 @@ INCLUDE       =
 EDLIB_DIR     = ./edlib
 EDLIB_INCLUDE = ./edlib/include
 EDLIB         = $(EDLIB_DIR)/src/edlib.o
-INCLUDE      += -I$(EDLIB_INCLUDE)
+#INCLUDE      += -I$(EDLIB_INCLUDE)
 
 # SIMD
 FLAG_SSE4       = -msse4
@@ -46,14 +45,14 @@ FLAG_AVX512BW   = -mavx512bw
 ABPOA_DIR = ./abPOA
 ABPOA_INCLUDE = $(ABPOA_DIR)/include
 ABPOALIB      = $(LIB_DIR)/libabpoa.a
-INCLUDE      += -I$(ABPOA_INCLUDE)
+#INCLUDE      += -I$(ABPOA_INCLUDE)
 ABPOA_SIMD_FLAG =
 
 # ksw2
 # TODO flag with sse
 KSW2_DIR     = ./ksw2
 KSW2_INCLUDE = ./ksw2
-INCLUDE     += -I$(KSW2_INCLUDE)
+#INCLUDE     += -I$(KSW2_INCLUDE)
 KSW2_SIMD_FLAG = -msse4.1
 
 ifneq ($(sse2),)
@@ -100,41 +99,42 @@ endif
 	$(CC) -c $(CFLAGS) $(INCLUDE) $< -o $@
 
 .cpp.o:
-	$(CPP) -c $(CPPFLAGS) $(INCLUDE) $< -o $@
+	$(CXX) -c $(CPPFLAGS) $(INCLUDE) $< -o $@
 
 all:		$(MINMAP2LIB) $(BIN) 
 TideHunter: $(BIN)
 
 $(BIN): $(OBJS) $(ABPOALIB) Makefile
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
-	$(CPP) $(CFLAGS) $(OBJS) $(ABPOALIB) $(LIB) -o $@ $(PG_FLAG)
+	$(CXX) $(CFLAGS) $(OBJS) $(ABPOALIB) $(INCLUDE) $(LIB) -o $@ $(PG_FLAG)
 
 # edlib
 $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
-	$(CPP) $(CFLAGS) -c $< -I $(EDLIB_INCLUDE) -o $@
+	$(CXX) $(CFLAGS) -c $< $(INCLUDE) -I $(EDLIB_INCLUDE) -o $@
 
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h 
-	$(CPP) -c $(CPPFLAGS) $< -I $(EDLIB_INCLUDE) -o $@
+	#$(CXX) -c $(CPPFLAGS) $< $(INCLUDE) -I $(EDLIB_INCLUDE) -o $@
+	$(CC) -c $(CFLAGS) $< $(INCLUDE) -I $(EDLIB_INCLUDE) -o $@
 
 # abPOA
 $(ABPOALIB): 
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	cd $(ABPOA_DIR); \
-	make simd_check PREDIR=$(PWD); make libabpoa PREDIR=$(PWD) $(ABPOA_SIMD_FLAG) 
+	make simd_check PREDIR=$(PWD); make libabpoa PREDIR=$(PWD) $(ABPOA_SIMD_FLAG) INCLUDE=-I$(BUILD_PREFIX)/include CFLAGS="-Wall -O3 -L$(BUILD_PREFIX)/lib"
 
 # ksw2
 $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
-	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $< -o $@
+	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $(INCLUDE) $< -o $@
 
 $(KSW2_DIR)/ksw2_gg2_sse.o: $(KSW2_DIR)/ksw2_gg2_sse.c $(KSW2_DIR)/ksw2.h
-	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $< -o $@
+	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $(INCLUDE) $< -o $@
 
 $(SRC_DIR)/abpoa_cons.o: $(SRC_DIR)/abpoa_cons.c $(ABPOA)
-	$(CC) -c $(CFLAGS) $< -I $(ABPOA_INCLUDE) -o $@
+	$(CC) -c $(CFLAGS) $< -I $(ABPOA_INCLUDE) $(INCLUDE) -o $@
 
 # ksw2
 $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
-	$(CC) -c $(CFLAGS) $< -I $(KSW2_INCLUDE) -o $@
+	$(CC) -c $(CFLAGS) $< -I $(KSW2_INCLUDE) $(INCLUDE) -o $@
 
 clean:
 	rm -f $(SRC_DIR)/*.o $(BIN)
