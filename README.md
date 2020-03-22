@@ -29,8 +29,9 @@ cd TideHunter; make
 
 - [Introduction](#introduction)
 - [Installation](#install)
-  - [Operating system](#os)
-  - [Building TideHunter](#build)
+  - [Installing TideHunter via conda](#conda)
+  - [Building TideHunter from source files](#build)
+  - [Pre-built binary executable file for Linux/Unix](#binary)
 - [Getting started with toy example in `test_data`](#start)
 - [Usage](#usage)
   - [Generate consensus in FASTA format](#fasta_cons)
@@ -55,10 +56,15 @@ Oxford Nanopore Technologies (ONT) sequencing data at error rates
 up to 20% and does not have any limitation of the maximal repeat pattern size.
 
 ## <a name="install"></a>Installation
-### <a name="os"></a>Operating system
-TideHunter currently can only be built and run on Linux/Unix systems.
 
-### <a name="build"></a>Building TideHunter
+### <a name="conda"></a>Installing TideHunter via conda
+On Linux/Unix and Mac OS, TideHunter can be installed via
+```
+conda install -c bioconda tidehunter
+```
+
+### <a name="build"></a>Building TideHunter from source files
+You can also choose to build TideHunter from source files.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
@@ -72,6 +78,8 @@ This gives you the latest version of TideHunter, which might be still under deve
 git clone https://github.com/yangao07/TideHunter.git
 cd TideHunter; make
 ```
+
+### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
 wget https://github.com/yangao07/TideHunter/releases/download/v1.2.2/TideHunter-v1.2.2_x64-linux.tar.gz
