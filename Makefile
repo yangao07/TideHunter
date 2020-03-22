@@ -1,4 +1,4 @@
-CFLAGS   =	 -Wall -g -O3 -Wno-unused-variable -Wno-unused-function
+CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation
 
 # for debug
 ifneq ($(debug),)
@@ -27,6 +27,11 @@ LIB_DIR =   ./lib
 LIB           = -lm -lz -lpthread
 
 INCLUDE       =
+
+ifneq ($(BUILD_PREFIX),)
+	INCLUDE_FLAG = "INCLUDE=-I$(BUILD_PREFIX)/include"
+	LIB_FLAG = "-L$(BUILD_PREFIX)/lib"
+endif
 
 
 # edlib
@@ -120,7 +125,7 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 $(ABPOALIB): 
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	cd $(ABPOA_DIR); \
-	make simd_check PREDIR=$(PWD); make libabpoa PREDIR=$(PWD) $(ABPOA_SIMD_FLAG) INCLUDE=-I$(BUILD_PREFIX)/include CFLAGS="-Wall -O3 -L$(BUILD_PREFIX)/lib"
+	make simd_check PREDIR=$(PWD); make libabpoa PREDIR=$(PWD) $(ABPOA_SIMD_FLAG) $(INCLUDE_FLAG) CFLAGS="-Wall -O3 $(LIB_FLAG) -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation"
 
 # ksw2
 $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
