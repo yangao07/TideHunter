@@ -33,8 +33,8 @@ int* edlibAlignmentToXID(const unsigned char* const alignment, const int alignme
     int *xid = (int*) calloc(4, sizeof(int));
 
     int lastMove = -1;  // Char of last move. 0 if there was no previous move.
-    int numOfSameMoves = 0;
-    for (int i = 0; i <= alignmentLength; i++) {
+    int numOfSameMoves = 0, i;
+    for (i = 0; i <= alignmentLength; i++) {
         // if new sequence of same moves started
         if (i == alignmentLength || (alignment[i] != lastMove && lastMove != -1)) {
             xid[lastMove] += numOfSameMoves;
@@ -62,9 +62,6 @@ int edlib_align_NW(char *query, int qlen, char *target, int tlen) {
     if (result.status == EDLIB_STATUS_OK) {
         int *xid = edlibAlignmentToXID(result.alignment, result.alignmentLength);
         if (xid != 0) {
-#ifdef __DEBUG__
-            printf("Edlib-NW: %d=, %dX, %dI, %dD.\n", xid[0], xid[3], xid[1], xid[2]);
-#endif
              iden_n = xid[0]; 
              free(xid);
         }
@@ -78,10 +75,6 @@ int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, in
     EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_LOC, additionalEqualities, 5));
     if (result.status == EDLIB_STATUS_OK) {
         ed = result.editDistance, *start = result.startLocations[0], *end = result.endLocations[0];
-#ifdef __DEBUG__
-        // int i;
-        // for (i = 0; i < result.numLocations; ++i) printf("Edlib-HW: %d, %d, %d\n", result.editDistance, result.startLocations[i], result.endLocations[i]);
-#endif
     }
     edlibFreeAlignResult(result);
     return ed;
@@ -94,9 +87,6 @@ int edlib_align_SHW(char *query, int qlen, char *target, int tlen) {
     if (result.status == EDLIB_STATUS_OK) {
         int *xid = edlibAlignmentToXID(result.alignment, result.alignmentLength);
         if (xid != 0) {
-#ifdef __DEBUG__
-            printf("Edlib-SHW: %d=, %dX, %dI, %dD. (%d,%d->%d)\n", xid[0], xid[3], xid[1], xid[2], result.editDistance, result.startLocations[0], result.endLocations[0]);
-#endif
             iden_n = xid[0]; 
             free(xid);
         }

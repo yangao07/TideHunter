@@ -118,7 +118,6 @@ $(EDLIB): $(EDLIB_DIR)/src/edlib.cpp $(EDLIB_DIR)/include/edlib.h
 	$(CXX) $(CFLAGS) -c $< $(INCLUDE) -I $(EDLIB_INCLUDE) -o $@
 
 $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h 
-	#$(CXX) -c $(CPPFLAGS) $< $(INCLUDE) -I $(EDLIB_INCLUDE) -o $@
 	$(CC) -c $(CFLAGS) $< $(INCLUDE) -I $(EDLIB_INCLUDE) -o $@
 
 # abPOA
