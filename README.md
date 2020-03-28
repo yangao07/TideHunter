@@ -14,17 +14,17 @@
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
 wget https://github.com/yangao07/TideHunter/releases/download/v1.2.2/TideHunter-v1.2.2.tar.gz
-tar -zxvf TideHunter-v1.2.2.tar.gz
-cd TideHunter-v1.2.2; make
-./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+tar -zxvf TideHunter-v1.2.2.tar.gz && cd TideHunter-v1.2.2
 ```
-Or use `git clone` command:
+Install via conda and run with test data:
 ```
-git clone https://github.com/yangao07/TideHunter.git
-cd TideHunter; make
-./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+conda install -c bioconda tidehunter
+TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
-
+Or, make from source and run with test data:
+```
+make; ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+```
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -35,7 +35,7 @@ cd TideHunter; make
 - [Getting started with toy example in `test_data`](#start)
 - [Usage](#usage)
   - [Generate consensus in FASTA format](#fasta_cons)
-  - [Generate consensus in tabular formatr](#tab_cons)
+  - [Generate consensus in tabular format](#tab_cons)
   - [Generate a full-length consensus](#full_cons)
 - [Commands and options](#cmd)
 - [Input](#input)
