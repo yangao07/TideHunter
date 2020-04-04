@@ -3,6 +3,7 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <math.h>
+#include <sys/sysinfo.h>
 #include "tide_hunter.h"
 #include "utils.h"
 #include "kseq.h"
@@ -108,7 +109,7 @@ static int usage(void)
 	//err_printf("\n");
 
 	err_printf("    Computing resource:\n");
-	err_printf("         -t --thread      [INT]    number of threads to use. [%d]\n\n", THREAD_N);
+	err_printf("         -t --thread      [INT]    number of threads to use. [%d]\n\n", MIN_OF_TWO(THREAD_N, get_nprocs()));
 
     err_printf("    General options:\n");
     err_printf("         -h --help                 print this help usage information.\n");
@@ -161,13 +162,6 @@ thread_aux_t *aux_init(mini_tandem_para *mtp) {
 		aux[i].mtp = mtp;
 	}
 	return aux;
-}
-
-void aux_free(thread_aux_t *aux, int n_thread) {
-	//int i;
-	//for (i = 0; i < n_thread; ++i) {
-	//}
-	free(aux);
 }
 
 int COUNT=0;
@@ -303,7 +297,7 @@ void mini_tandem_free_para(mini_tandem_para *mtp) {
 
 int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 {
-	int i, j, n_seqs;
+	int i, n_seqs;
 	gzFile readfp = xzopen(read_fn, "r");
 	kstream_t *fs = ks_init(readfp);
 	kseq_t *read_seq = (kseq_t*)calloc(CHUNK_READ_N, sizeof(kseq_t));
@@ -359,8 +353,7 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
         read_seq_free(read_seq+i);
         tandem_seq_free(tseq+i);
 	} 
-    free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp);
-	aux_free(aux, mtp->n_thread);
+    free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp); free(aux);
 	return 0;
 }
 
