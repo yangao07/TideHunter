@@ -1,15 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
 #include <pthread.h>
 #include <math.h>
 #include <sys/sysinfo.h>
-#include "tide_hunter.h"
+#include "tidehunter.h"
+#include "abpoa_cons.h"
 #include "utils.h"
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.2.2";
+const char VERSION[20] = "1.3.0";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -25,6 +27,11 @@ const struct option mini_tandem_opt [] = {
 	{ "max-period", 1, NULL, 'P' },
 
 	// { "rep-range", 1, NULL, 'r' },
+
+    { "match", 1, NULL, 'M', },
+    { "mismatch", 1, NULL, 'X', },
+    { "gap_open", 1, NULL, 'O', },
+    { "gap_ext", 1, NULL, 'E', },
 
 	// { "splint-seq", 1, NULL, 'S' },
 	{ "five-prime", 1, NULL, '5' },
@@ -68,52 +75,61 @@ static int usage(void)
 	err_printf("Usage:   %s [options] in.fa/fq > cons.fa\n\n", PROG);
 
 	err_printf("Options: \n");
-	err_printf("    Seeding:\n");
-	err_printf("         -k --kmer-length [INT]    k-mer length (no larger than %d). [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
-	err_printf("         -w --window-size [INT]    window size. [%d]\n", KMER_WSIZE);
-	err_printf("         -s --step-size   [INT]    step size. [%d]\n", KMER_SSIZE);
-	//err_printf("         -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
-	err_printf("         -H --HPC-kmer             use homopolymer-compressed k-mer. [False]\n");
+	err_printf("  Seeding:\n");
+	err_printf("    -k --kmer-length INT    k-mer length (no larger than %d). [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
+	err_printf("    -w --window-size INT    window size. [%d]\n", KMER_WSIZE);
+	err_printf("    -s --step-size   INT    step size. [%d]\n", KMER_SSIZE);
+	//err_printf("    -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
+	err_printf("    -H --HPC-kmer             use homopolymer-compressed k-mer. [False]\n");
 
 	//err_printf("\n");
 
-	err_printf("    Tandem repeat criteria:\n");
+	err_printf("  Tandem repeat criteria:\n");
 	// TODO min_copy < 2 ???
-	err_printf("         -c --min-copy    [INT]    minimum copy number of tandem repeat. [%d]\n", MIN_COPY);
-	err_printf("         -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [%.2f]\n", MAX_DIV);
-	err_printf("         -p --min-period  [INT]    minimum period size of tandem repeat. (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
-	err_printf("         -P --max-period  [INT]    maximum period size of tandem repeat. (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
+	err_printf("    -c --min-copy    INT    minimum copy number of tandem repeat. [%d]\n", MIN_COPY);
+	err_printf("    -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats. [%.2f]\n", MAX_DIV);
+	err_printf("    -p --min-period  INT    minimum period size of tandem repeat. (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
+	err_printf("    -P --max-period  INT    maximum period size of tandem repeat. (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
 
-//  err_printf("         -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
+//  err_printf("    -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
 //  err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
 	//err_printf("\n");
 
-	err_printf("    Adapter sequence:\n");
-	err_printf("         -5 --five-prime  [STR]    5' adapter sequence (sense strand). [NULL]\n");
-	err_printf("         -3 --three-prime [STR]    3' adapter sequence (anti-sense strand). [NULL]\n");
-	err_printf("         -a --ada-mat-rat [FLT]    minimum match ratio of adapter sequence. [%.2f]\n", ADA_MATCH_RAT);
+    err_printf("  Consensus calling:\n");
+    err_printf("    -M --match    INT       match score [%d]\n", MATCH);
+    err_printf("    -X --mismatch INT       mismatch penalty [%d]\n", MISMATCH);
+    err_printf("    -O --gap-open INT(,INT) gap opening penalty (O1,O2) [%d,%d]\n", GAP_OPEN1, GAP_OPEN2);
+    err_printf("    -E --gap-ext  INT(,INT) gap extension penalty (E1,E2) [%d,%d]\n", GAP_EXT1, GAP_EXT2);
+    err_printf("                            %s provides three gap penalty modes, cost of a g-long gap:\n", PROG);
+    err_printf("                            - convex (default): min{O1+g*E1, O2+g*E2}\n");
+    err_printf("                            - affine (set O2 as 0): O1+g*E1\n");
+    err_printf("                            - linear (set O1 as 0): g*E1\n");
+	err_printf("  Adapter sequence:\n");
+	err_printf("    -5 --five-prime  STR    5' adapter sequence (sense strand). [NULL]\n");
+	err_printf("    -3 --three-prime STR    3' adapter sequence (anti-sense strand). [NULL]\n");
+	err_printf("    -a --ada-mat-rat FLT    minimum match ratio of adapter sequence. [%.2f]\n", ADA_MATCH_RAT);
 
 	//err_printf("\n");
 
-	err_printf("    Output:\n");
-	err_printf("         -o --cons-out    [STR]    output file. [stdout]\n");
-	err_printf("         -l --longest              only output the consensus of the longest tandem repeat. [False]\n");
-	err_printf("         -F --full-len             only output the consensus that is full-length. [False]\n");
-	err_printf("         -f --out-fmt     [INT]    output format. [%d]\n", FASTA_FMT);
-	err_printf("                                       %d: FASTA\n", FASTA_FMT);
-	err_printf("                                       %d: Tabular\n", TAB_FMT);
-	//err_printf("         -S --splint-seq  [STR]    splint sequence in FASTA/FASTQ format. [NULL]\n");
-	//err_printf("         -d --detail-out  [STR]    detailed information of each consensus. [NULL]\n");
-	//err_printf("                                   (start, end, score, etc.)\n");
+	err_printf("  Output:\n");
+	err_printf("    -o --cons-out    STR    output file. [stdout]\n");
+	err_printf("    -l --longest            only output the consensus of the longest tandem repeat. [False]\n");
+	err_printf("    -F --full-len           only output the consensus that is full-length. [False]\n");
+	err_printf("    -f --out-fmt     INT    output format. [%d]\n", FASTA_FMT);
+	err_printf("                            - %d: FASTA\n", FASTA_FMT);
+	err_printf("                            - %d: Tabular\n", TAB_FMT);
+	//err_printf("    -S --splint-seq  STR    splint sequence in FASTA/FASTQ format. [NULL]\n");
+	//err_printf("    -d --detail-out  STR    detailed information of each consensus. [NULL]\n");
+	//err_printf("                              (start, end, score, etc.)\n");
 
 	//err_printf("\n");
 
-	err_printf("    Computing resource:\n");
-	err_printf("         -t --thread      [INT]    number of threads to use. [%d]\n\n", MIN_OF_TWO(THREAD_N, get_nprocs()));
+	err_printf("  Computing resource:\n");
+	err_printf("    -t --thread      INT    number of threads to use. [%d]\n\n", MIN_OF_TWO(THREAD_N, get_nprocs()));
 
-    err_printf("    General options:\n");
-    err_printf("         -h --help                 print this help usage information.\n");
-    err_printf("         -v --version              show version number.\n");
+    err_printf("  General options:\n");
+    err_printf("    -h --help               print this help usage information.\n");
+    err_printf("    -v --version            show version number.\n");
 
 	err_printf("\n");
 	return 1;
@@ -156,12 +172,26 @@ void read_seq_free(kseq_t *read_seq) {
 
 thread_aux_t *aux_init(mini_tandem_para *mtp) {
 	int i;
+    // get one abpt
+    abpoa_para_t *abpt = mt_abpoa_init_para(mtp);
 	thread_aux_t *aux = (thread_aux_t*)calloc(mtp->n_thread, sizeof(thread_aux_t));
 	for (i = 0; i < mtp->n_thread; ++i) {
 		aux[i].tid = i; 
 		aux[i].mtp = mtp;
+        aux[i].abpt = abpt;
+        // init ab for each thread
+        aux[i].ab = abpoa_init();
 	}
 	return aux;
+}
+
+void aux_free(thread_aux_t *aux, mini_tandem_para *mtp) {
+    int i;
+    for (i = 0; i < mtp->n_thread; ++i) {
+        // free ab
+        abpoa_free(aux[i].ab, aux->abpt);
+    }
+    abpoa_free_para(aux->abpt); free(aux);
 }
 
 int COUNT=0;
@@ -212,11 +242,12 @@ static void *mini_tandem_thread_main(void *aux)
 		pthread_rwlock_unlock(&RWLOCK);
 		if (i >= a->n_seqs) break;
 		mini_tandem_para *mtp = a->mtp;
-		kseq_t *read_seq = a->read_seq + i; 
+		kseq_t *read_seq = a->read_seq + i;
 		tandem_seq_t *tandem_seq = a->tseq + i;
+        abpoa_t *ab = a->ab; abpoa_para_t *abpt = a->abpt;
         // fprintf(stderr, "%s\n", read_seq->name.s); // for debug
 		// generate cons_seq from seq , cons_seq may have multiple seqs
-		tide_hunter_core(read_seq, tandem_seq, mtp);
+		tidehunter_core(read_seq, tandem_seq, mtp, ab, abpt);
 	}
     return aux;
 }
@@ -274,6 +305,10 @@ mini_tandem_para *mini_tandem_init_para(void) {
 	mtp->div_exp = get_div_exp(KMER_SIZE, MAX_DIV);
 	mtp->min_p = DEF_MIN_PERIOD;
 	mtp->max_p = DEF_MAX_PERIOD;
+
+    mtp->match = MATCH, mtp->mismatch = MISMATCH;
+    mtp->gap_open1 = GAP_OPEN1, mtp->gap_open2 = GAP_OPEN2;
+    mtp->gap_ext1 = GAP_EXT1, mtp->gap_ext2 = GAP_EXT2;
 
 	mtp->cons_out = stdout;
 	mtp->only_longest = 0;
@@ -353,7 +388,8 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
         read_seq_free(read_seq+i);
         tandem_seq_free(tseq+i);
 	} 
-    free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp); free(aux);
+    free(read_seq); free(tseq); ks_destroy(fs); err_gzclose(readfp); 
+    aux_free(aux, mtp);
 	return 0;
 }
 
@@ -361,9 +397,9 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 int main(int argc, char *argv[])
 {
 	mini_tandem_para *mtp = mini_tandem_init_para();
-	int c, op_idx;
+	int c, op_idx; char *s;
 	double realtime0 = realtime();
-	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
+	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:M:X:E:O:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
             case 'h': return usage();
@@ -395,6 +431,11 @@ int main(int argc, char *argv[])
 					  }
 					  break;
 		  //case 'r': mtp->max_range = th_parse_num(optarg); break;
+
+            case 'M': mtp->match = atoi(optarg); break;
+            case 'X': mtp->mismatch = atoi(optarg); break;
+            case 'O': mtp->gap_open1 = strtol(optarg, &s, 10); if (*s == ',') mtp->gap_open2 = strtol(s+1, &s, 10); break;
+            case 'E': mtp->gap_ext1 = strtol(optarg, &s, 10); if (*s == ',') mtp->gap_ext2 = strtol(s+1, &s, 10); break;
 
 			//case 'S': mtp->splint_fn = strdup(optarg); break;
 			case '5': mtp->five_fn = strdup(optarg); break;

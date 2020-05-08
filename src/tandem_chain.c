@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <math.h>
 #include "tandem_chain.h"
-#include "tandem_hit.h"
 #include "utils.h"
 
 static const char LogTable256[256] = {

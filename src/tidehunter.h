@@ -1,6 +1,7 @@
 #ifndef _MINI_TANDEM_H_
 #define _MINI_TANDEM_H_
 #include <zlib.h>
+#include "abpoa.h"
 #include "seq.h"
 
 KSEQ_INIT(gzFile, gzread)
@@ -20,8 +21,15 @@ KSEQ_INIT(gzFile, gzread)
 #define MIN_PERIOD 2
 #define DEF_MIN_PERIOD 30
 #define MAX_PERIOD UINT32_MAX
-#define DEF_MAX_PERIOD 100000 // UINT16_MAX
-#define DEF_MAX_PERIOD_STR "100K" // UINT16_MAX
+#define DEF_MAX_PERIOD 10000 // UINT16_MAX
+#define DEF_MAX_PERIOD_STR "10K" // UINT16_MAX
+
+#define MATCH 2
+#define MISMATCH 4
+#define GAP_OPEN1 4
+#define GAP_EXT1 2
+#define GAP_OPEN2 24
+#define GAP_EXT2 1
 
 #define FASTA_FMT 1
 #define TAB_FMT 2
@@ -37,6 +45,8 @@ typedef struct {
     int min_copy; double max_div, div_exp; // max allowed divergence
     int64_t min_p, max_p; // min/max period size
     int64_t max_range; // max range to find tandem repeat, -1 for no limit
+    // msa parameters for abPOA
+    int match, mismatch, gap_open1, gap_open2, gap_ext1, gap_ext2;
     // char *splint_fn, *splint_seq, *splint_rc_seq; int splint_len;
     float ada_match_rat;
     char *five_fn, *five_seq, *five_rc_seq; int five_len;
@@ -61,13 +71,14 @@ typedef struct {
     int tid;
     mini_tandem_para *mtp;
     int n_seqs; kseq_t *read_seq; tandem_seq_t *tseq;
+    abpoa_t *ab; abpoa_para_t *abpt;
     // auxiliary memory for computing
     // int8_t **hit_array; int array_m; // for finding max hit
 } thread_aux_t;
 
 
 int mini_tandem(const char *read_fn, mini_tandem_para *mtp);
-int tide_hunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp);
+int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp, abpoa_t *ab, abpoa_para_t *abpt);
 
 mini_tandem_para *mini_tandem_init_para(void);
 

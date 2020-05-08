@@ -49,8 +49,8 @@ FLAG_AVX512BW   = -mavx512bw
 # abPOA
 ABPOA_DIR = ./abPOA
 ABPOA_INCLUDE = $(ABPOA_DIR)/include
-ABPOALIB      = $(LIB_DIR)/libabpoa.a
-#INCLUDE      += -I$(ABPOA_INCLUDE)
+ABPOALIB      = ./lib/libabpoa.a
+INCLUDE      += -I$(ABPOA_INCLUDE)
 ABPOA_SIMD_FLAG =
 
 # ksw2
@@ -124,7 +124,8 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 $(ABPOALIB): 
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	cd $(ABPOA_DIR); \
-	make simd_check PREDIR=$(PWD); make libabpoa PREDIR=$(PWD) $(ABPOA_SIMD_FLAG) $(INCLUDE_FLAG) CFLAGS="-Wall -O3 $(LIB_FLAG) -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation"
+	make libabpoa PREFIX=$(PWD) $(ABPOA_SIMD_FLAG) $(INCLUDE_FLAG) CFLAGS="-Wall -O3 $(LIB_FLAG) -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation"
+
 
 # ksw2
 $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
@@ -133,8 +134,8 @@ $(KSW2_DIR)/ksw2_extz2_sse.o: $(KSW2_DIR)/ksw2_extz2_sse.c $(KSW2_DIR)/ksw2.h
 $(KSW2_DIR)/ksw2_gg2_sse.o: $(KSW2_DIR)/ksw2_gg2_sse.c $(KSW2_DIR)/ksw2.h
 	$(CC) -c $(CFLAGS) $(KSW2_SIMD_FLAG) $(INCLUDE) $< -o $@
 
-$(SRC_DIR)/abpoa_cons.o: $(SRC_DIR)/abpoa_cons.c $(ABPOA)
-	$(CC) -c $(CFLAGS) $< -I $(ABPOA_INCLUDE) $(INCLUDE) -o $@
+#$(SRC_DIR)/abpoa_cons.o: $(SRC_DIR)/abpoa_cons.c $(ABPOA)
+#	$(CC) -c $(CFLAGS) $< -I $(ABPOA_INCLUDE) $(INCLUDE) -o $@
 
 # ksw2
 $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/ksw2_align.c $(SRC_DIR)/ksw2_align.h
@@ -155,13 +156,14 @@ clean_edlib:
 
 clean_all: clean clean_abPOA clean_ksw2 clean_edlib 
 
-$(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h
-$(SRC_DIR)/gen_cons.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_cons.h $(SRC_DIR)/ksw2_align.h 
+$(SRC_DIR)/abpoa_cons.o: $(SRC_DIR)/tidehunter.h $(SRC_DIR)/seq.h $(ABPOA_INCLUDE)/abpoa.h $(ABPOA_INCLUDE)/simd_instruction.h 
+$(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.h $(SRC_DIR)/utils.h
+$(SRC_DIR)/gen_cons.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tidehunter.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_cons.h $(SRC_DIR)/ksw2_align.h $(ABPOA_INCLUDE)/abpoa.h
 $(SRC_DIR)/ksw2_align.o: $(SRC_DIR)/utils.h
-$(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/kseq.h
+$(SRC_DIR)/main.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tidehunter.h $(SRC_DIR)/kseq.h $(SRC_DIR)/abpoa_cons.h $(ABPOA_INCLUDE)/abpoa.h
 $(SRC_DIR)/partition.o: $(SRC_DIR)/utils.h $(SRC_DIR)/edlib_align.h $(SRC_DIR)/abpoa_cons.h $(SRC_DIR)/ksw2_align.h $(SRC_DIR)/tandem_chain.h
-$(SRC_DIR)/seq.o: $(SRC_DIR)/utils.h $(SRC_DIR)/seq.h
-$(SRC_DIR)/tandem_chain.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h
-$(SRC_DIR)/tandem_hit.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h $(SRC_DIR)/tandem_hit.h
-$(SRC_DIR)/tide_hunter.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tide_hunter.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h $(SRC_DIR)/partition.h $(SRC_DIR)/gen_cons.h $(SRC_DIR)/seq.h
+$(SRC_DIR)/seq.o: $(SRC_DIR)/utils.h $(SRC_DIR)/seq.h $(SRC_DIR)/kseq.h
+$(SRC_DIR)/tandem_chain.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h $(SRC_DIR)/tidehunter.h
+$(SRC_DIR)/tandem_hit.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h $(SRC_DIR)/tandem_hit.h $(SRC_DIR)/tidehunter.h
+$(SRC_DIR)/tidehunter.o: $(SRC_DIR)/utils.h $(SRC_DIR)/tidehunter.h $(SRC_DIR)/tandem_chain.h $(SRC_DIR)/tandem_hit.h $(SRC_DIR)/partition.h $(SRC_DIR)/gen_cons.h $(SRC_DIR)/seq.h
 $(SRC_DIR)/utils.o: $(SRC_DIR)/utils.h $(SRC_DIR)/ksort.h

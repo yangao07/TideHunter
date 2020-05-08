@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "tide_hunter.h"
+#include "tidehunter.h"
 #include "edlib_align.h"
 #include "abpoa_cons.h"
 #include "ksw2_align.h"
@@ -49,7 +49,7 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int
     ++tseq->cons_n;
 }
 
-void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t *tseq, mini_tandem_para *mtp, abpoa_t *ab, abpoa_para_t *abpt) {
         int cons_len=0;
         char *cons_seq = (char*)_err_malloc(seq_len * sizeof(char));
         uint8_t *cons_bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
@@ -76,7 +76,7 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                 if (par_pos[j] < 0) break;
             }
             if (j - i > mtp->min_copy) { // do multiple sequence alignment and consensus calling for par_pos[i:j]
-                cons_len = abpoa_msa(bseq, seq_len, par_pos+i, j-i, cons_bseq);
+                cons_len = abpoa_gen_cons(ab, abpt, bseq, seq_len, par_pos+i, j-i, cons_bseq);
                 for (s = 0; s < cons_len; ++s) cons_seq[s] = "ACGTN"[cons_bseq[s]]; cons_seq[cons_len] = '\0';
 
                 int max_q, max_t, cons_start, cons_end; double copy_num = j-i-1;

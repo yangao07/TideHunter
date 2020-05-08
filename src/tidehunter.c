@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "tide_hunter.h"
+#include "utils.h"
+#include "tidehunter.h"
 #include "tandem_hit.h"
 #include "tandem_chain.h"
 #include "partition.h"
 #include "gen_cons.h"
-#include "utils.h"
 #include "seq.h"
 
 // TODO polish everything!!!
@@ -20,7 +20,7 @@
 //           insertion:
 // 3. call consensus with each chain
 // 4. polish consensus result
-int tide_hunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp, abpoa_t *ab, abpoa_para_t *abpt) {
     if ((int)(read_seq->seq.l) < mtp->k) return 0;
     int seq_len = read_seq->seq.l; char *seq = read_seq->seq.s; 
     uint8_t *bseq = get_bseq(seq, seq_len);
@@ -41,7 +41,7 @@ int tide_hunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp
             free(par_pos); continue;
         }
         // msa and generate consensus
-        seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp);
+        seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp, ab, abpt);
     }
 
     free(bseq);

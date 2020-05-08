@@ -1,7 +1,7 @@
 #ifndef TANDEM_CHAIN_H
 #define TANDEM_CHAIN_H
 
-#include "tide_hunter.h"
+#include "tidehunter.h"
 #include "tandem_hit.h"
 
 #ifdef __cplusplus

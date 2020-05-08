@@ -1,7 +1,7 @@
 #ifndef TANDEM_HIT_H
 #define TANDEM_HIT_H
 #include <stdint.h>
-#include "tide_hunter.h"
+#include "tidehunter.h"
 
 typedef uint64_t hash_t;
 #define _8mask 0xff
