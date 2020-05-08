@@ -13,8 +13,8 @@
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.3.0/TideHunter-v1.3.0.tar.gz
-tar -zxvf TideHunter-v1.3.0.tar.gz && cd TideHunter-v1.3.0
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.2/TideHunter-v1.2.2.tar.gz
+tar -zxvf TideHunter-v1.2.2.tar.gz && cd TideHunter-v1.2.2
 ```
 Install via conda and run with test data:
 ```
@@ -68,9 +68,9 @@ You can also choose to build TideHunter from source files.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.3.0/TideHunter-v1.3.0.tar.gz
-tar -zxvf TideHunter-v1.3.0.tar.gz
-cd TideHunter-v1.3.0; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.2/TideHunter-v1.2.2.tar.gz
+tar -zxvf TideHunter-v1.2.2.tar.gz
+cd TideHunter-v1.2.2; make
 ```
 Or, you can use `git clone` command to download the source code.
 This gives you the latest version of TideHunter, which might be still under development.
@@ -82,8 +82,8 @@ cd TideHunter; make
 ### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.3.0/TideHunter-v1.3.0_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.3.0_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.2.2/TideHunter-v1.2.2_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.2.2_x64-linux.tar.gz
 ```
 You will see three binary files: `TideHunter-xxxx-xxxbits` built with different SIMD instructions.
 Please always first try the most up-to-date SIMD instruction version that is available on your machine (avx2>sse41>sse2).
