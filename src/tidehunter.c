@@ -22,7 +22,8 @@
 // 4. polish consensus result
 int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp, abpoa_t *ab, abpoa_para_t *abpt) {
     if ((int)(read_seq->seq.l) < mtp->k) return 0;
-    int seq_len = read_seq->seq.l; char *seq = read_seq->seq.s; 
+    int seq_len = read_seq->seq.l; char *seq = read_seq->seq.s;
+    // char *name = read_seq->name.s; fprintf(stderr, "%s\n", name);
     uint8_t *bseq = get_bseq(seq, seq_len);
 
     // collect tandem repeat hits

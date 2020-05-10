@@ -95,7 +95,7 @@ static int usage(void)
 //  err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
 	//err_printf("\n");
 
-    err_printf("  Consensus calling:\n");
+    err_printf("  Scoring parameters for partial order alignment:\n");
     err_printf("    -M --match    INT       match score [%d]\n", MATCH);
     err_printf("    -X --mismatch INT       mismatch penalty [%d]\n", MISMATCH);
     err_printf("    -O --gap-open INT(,INT) gap opening penalty (O1,O2) [%d,%d]\n", GAP_OPEN1, GAP_OPEN2);

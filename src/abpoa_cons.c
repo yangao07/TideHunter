@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "tidehunter.h"
+#include "utils.h"
 #include "seq.h"
 
 abpoa_para_t *mt_abpoa_init_para(mini_tandem_para *mtp) {
@@ -35,16 +36,29 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
     for (i = seq_n = 0; i < pos_n-1; ++i) {
         int start = pos[i], end = pos[i+1];
         if (start < 0 || end < 0 || start >= seq_len || end+1 >= seq_len) continue;
+        // fprintf(stdout, ">%d\n", start);
         seq_lens[seq_n] = end - start;
         _bseqs[seq_n] = bseqs + start + 1;
+        /*int j;
+        for (j = start; j < end; ++j)
+            fprintf(stdout, "%c", "ACGT"[bseqs[j+1]]);
+        fprintf(stdout, "\n");*/
         ++seq_n;
     }
 #ifndef __DEBUG__
-    uint8_t **_cons_bseq; int *_cons_l, _cons_n = 0;
-    abpoa_msa(ab, abpt, seq_n, seq_lens, _bseqs, NULL, &_cons_bseq, &_cons_l, &_cons_n, NULL, NULL);
-    if (_cons_n == 1) {
-        for (i = 0; i < _cons_l[0]; ++i) cons_bseq[i] = _cons_bseq[0][i];
-        cons_len = _cons_l[0];
+    if (seq_n <= 2) {
+        if (seq_n == 0) err_fatal_simple("No enough sequences to perform msa.\n");
+        cons_len = seq_lens[0];
+        for (i = 0; i < cons_len; ++i) cons_bseq[i] = _bseqs[0][i];
+    } else {
+        uint8_t **_cons_bseq; int *_cons_l, _cons_n = 0;
+        abpoa_msa(ab, abpt, seq_n, seq_lens, _bseqs, NULL, &_cons_bseq, &_cons_l, &_cons_n, NULL, NULL);
+        if (_cons_n == 1) {
+            for (i = 0; i < _cons_l[0]; ++i) cons_bseq[i] = _cons_bseq[0][i];
+            cons_len = _cons_l[0];
+
+            free(_cons_l); free(_cons_bseq[0]); free(_cons_bseq);
+        }
     }
 #else
     abpoa_msa(ab, abpt, seq_n, seq_lens, _bseqs, stderr, NULL, NULL, NULL, NULL, NULL);
