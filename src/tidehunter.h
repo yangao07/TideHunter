@@ -6,7 +6,7 @@
 
 KSEQ_INIT(gzFile, gzread)
 
-#define THREAD_N 8
+#define THREAD_N 4
 #define CHUNK_READ_N 4096 // 1
 
 #define KMER_SIZE 8  // kmer length

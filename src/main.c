@@ -4,7 +4,6 @@
 #include <getopt.h>
 #include <pthread.h>
 #include <math.h>
-#include <sys/sysinfo.h>
 #include "tidehunter.h"
 #include "abpoa_cons.h"
 #include "utils.h"
@@ -125,7 +124,7 @@ static int usage(void)
 	//err_printf("\n");
 
 	err_printf("  Computing resource:\n");
-	err_printf("    -t --thread      INT    number of threads to use. [%d]\n\n", MIN_OF_TWO(THREAD_N, get_nprocs()));
+	err_printf("    -t --thread      INT    number of threads to use. [%d]\n\n", THREAD_N);
 
     err_printf("  General options:\n");
     err_printf("    -h --help               print this help usage information.\n");
