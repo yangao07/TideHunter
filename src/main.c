@@ -113,8 +113,8 @@ static int usage(void)
 
 	err_printf("  Output:\n");
 	err_printf("    -o --cons-out    STR    output file. [stdout]\n");
-	err_printf("    -l --longest            only output the consensus of the longest tandem repeat. [False]\n");
-	err_printf("    -F --full-len           only output the consensus that is full-length. [False]\n");
+	err_printf("    -l --longest            only output the consensus sequence of tandem repeat that covers the longest read sequence. [False]\n");
+	err_printf("    -F --full-len           only output the consensus sequence that is full-length. [False]\n");
 	err_printf("    -f --out-fmt     INT    output format. [%d]\n", FASTA_FMT);
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
 	err_printf("                            - %d: Tabular\n", TAB_FMT);

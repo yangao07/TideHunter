@@ -34,9 +34,9 @@ make; ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
   - [Pre-built binary executable file for Linux/Unix](#binary)
 - [Getting started with toy example in `test_data`](#start)
 - [Usage](#usage)
-  - [Generate consensus in FASTA format](#fasta_cons)
-  - [Generate consensus in tabular format](#tab_cons)
-  - [Generate a full-length consensus](#full_cons)
+  - [To generate consensus in FASTA format](#fasta_cons)
+  - [To generate consensus in tabular format](#tab_cons)
+  - [To generate a full-length consensus](#full_cons)
 - [Commands and options](#cmd)
 - [Input](#input)
   - [Adapter sequence](#adapter)
@@ -85,8 +85,6 @@ If you meet any compiling issue, please try the pre-built binary file:
 wget https://github.com/yangao07/TideHunter/releases/download/v1.3.0/TideHunter-v1.3.0_x64-linux.tar.gz
 tar -zxvf TideHunter-v1.3.0_x64-linux.tar.gz
 ```
-You will see three binary files: `TideHunter-xxxx-xxxbits` built with different SIMD instructions.
-Please always first try the most up-to-date SIMD instruction version that is available on your machine (avx2>sse41>sse2).
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
 ```
@@ -94,15 +92,15 @@ Please always first try the most up-to-date SIMD instruction version that is ava
 ```
 
 ## <a name="usage"></a>Usage
-### <a name="fasta_cons"></a>Generate consensus in FASTA format
+### <a name="fasta_cons"></a>To generate consensus in FASTA format
 ```
 ./bin/TideHunter ./test_data/test_1000x10.fa > cons.fa
 ```
-### <a name="tab_cons"></a>Generate consensus in tabular format
+### <a name="tab_cons"></a>To generate consensus in tabular format
 ```
 ./bin/TideHunter -f 2 ./test_data/test_1000x10.fa > cons.out
 ```
-### <a name="full_cons"></a>Generate a full-length consensus
+### <a name="full_cons"></a>To generate a full-length consensus sequence
 ```
 ./bin/TideHunter -5 ./test_data/5prime.fa -3 ./test_data/3prime.fa ./test_data/full_length.fa > cons_full.fa
 ```
@@ -128,8 +126,8 @@ Options:
          -a --ada-mat-rat [FLT]    minimum match ratio of adapter sequence. [0.80]
     Output:
          -o --cons-out    [STR]    output file. [stdout]
-         -l --longest              only output the consensus of the longest tandem repeat. [False]
-         -F --full-len             only output the consensus that is full-length. [False]
+         -l --longest              only output the consensus sequence of tandem repeat that covers the longest read sequence. [False]
+         -F --full-len             only output the consensus sequence that is full-length. [False]
          -f --out-fmt     [INT]    output format. [1]
                                        1: FASTA
                                        2: Tabular
