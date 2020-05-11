@@ -64,7 +64,8 @@ conda install -c bioconda tidehunter
 ```
 
 ### <a name="build"></a>Building TideHunter from source files
-You can also choose to build TideHunter from source files.
+You can also build TideHunter from source files.
+Make sure you have gcc (>=6.4.0) and zlib installed before compiling.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
