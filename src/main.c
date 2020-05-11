@@ -67,7 +67,7 @@ static int usage(void)
 	err_printf("%s: Tandem repeats detection and consensus calling from noisy long reads\n\n", PROG);
 
 	time_t t; time(&t);
-	err_printf("Version: %s\n", VERSION);
+	err_printf("Version: %s\t", VERSION);
 	//err_printf("Build date: %s", ctime(&t));
 	err_printf("Contact: %s\n\n", CONTACT);
 

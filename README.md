@@ -2,10 +2,10 @@
 [![Latest Release](https://img.shields.io/github/release/yangao07/TideHunter.svg?label=Release)](https://github.com/yangao07/TideHunter/releases/latest)
 [![Github All Releases](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?label=Download)](https://github.com/yangao07/TideHunter/releases)
 [![BioConda Install](https://img.shields.io/conda/dn/bioconda/tidehunter.svg?style=flag&label=BioConda%20install)](https://anaconda.org/bioconda/tidehunter)
+[![Published in Bioinformatics](https://img.shields.io/badge/Published%20in-Bioinformatics-blue.svg)](https://doi.org/10.1093/bioinformatics/btz376)
+[![GitHub Issues](https://img.shields.io/github/issues/yangao07/TideHunter.svg?label=Issues)](https://github.com/yangao07/TideHunter/issues)
 [![Build Status](https://img.shields.io/travis/yangao07/TideHunter/master.svg?label=Master)](https://travis-ci.org/yangao07/TideHunter)
 [![License](https://img.shields.io/badge/License-GPL-black.svg)](https://github.com/yangao07/TideHunter/blob/master/LICENSE)
-[![GitHub Issues](https://img.shields.io/github/issues/yangao07/TideHunter.svg?label=Issues)](https://github.com/yangao07/TideHunter/issues)
-[![Published in Bioinformatics](https://img.shields.io/badge/Published%20in-Bioinformatics-blue.svg)](https://doi.org/10.1093/bioinformatics/btz376)
 <!--
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
@@ -72,10 +72,11 @@ wget https://github.com/yangao07/TideHunter/releases/download/v1.3.0/TideHunter-
 tar -zxvf TideHunter-v1.3.0.tar.gz
 cd TideHunter-v1.3.0; make
 ```
-Or, you can use `git clone` command to download the source code.
+Or, you can use `git clone` command to download the source code. 
+Don't forget to include the `--recursive` to download the codes of [abPOA](https://github.com/yangao07/abPOA).
 This gives you the latest version of TideHunter, which might be still under development.
 ```
-git clone https://github.com/yangao07/TideHunter.git
+git clone --recursive https://github.com/yangao07/TideHunter.git
 cd TideHunter; make
 ```
 
@@ -88,21 +89,21 @@ tar -zxvf TideHunter-v1.3.0_x64-linux.tar.gz
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
 ```
-./bin/TideHunter ./test_data/test_1000x10.fa > cons.fa
+TideHunter ./test_data/test_1000x10.fa > cons.fa
 ```
 
 ## <a name="usage"></a>Usage
 ### <a name="fasta_cons"></a>To generate consensus in FASTA format
 ```
-./bin/TideHunter ./test_data/test_1000x10.fa > cons.fa
+TideHunter ./test_data/test_1000x10.fa > cons.fa
 ```
 ### <a name="tab_cons"></a>To generate consensus in tabular format
 ```
-./bin/TideHunter -f 2 ./test_data/test_1000x10.fa > cons.out
+TideHunter -f 2 ./test_data/test_1000x10.fa > cons.out
 ```
 ### <a name="full_cons"></a>To generate a full-length consensus sequence
 ```
-./bin/TideHunter -5 ./test_data/5prime.fa -3 ./test_data/3prime.fa ./test_data/full_length.fa > cons_full.fa
+TideHunter -5 ./test_data/5prime.fa -3 ./test_data/3prime.fa ./test_data/full_length.fa > cons_full.fa
 ```
 
 ## <a name="cmd"></a>Commands and options
@@ -119,7 +120,7 @@ Options:
          -c --min-copy    [INT]    minimum copy number of tandem-repeats. [2]
          -e --max-diverg  [INT]    maximum allowed divergence rate between two consecutive repeats. [0.25]
          -p --min-period  [INT]    minimum period size of tandem repeat. (>=2) [30]
-         -P --max-period  [INT]    maximum period size of tandem repeat. (<=4294967295) [100K]
+         -P --max-period  [INT]    maximum period size of tandem repeat. (<=4294967295) [10K]
     Adapter sequence:
          -5 --five-prime  [STR]    5' adapter sequence (sense strand). [NULL]
          -3 --three-prime [STR]    3' adapter sequence (anti-sense strand). [NULL]
@@ -166,7 +167,7 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 |  6  | consLen     | length of the consensus sequence |
 |  7  | copyNum     | copy number of the tandem repeat |
 |  8  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
-|  9  | subPos      | start coordinate of each tandem repeat unit sequence, followed by one end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based |
+|  9  | subPos      | start coordinates of all the tandem repeat unit sequence, followed by the end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based |
 | 10  | consensus   | consensus sequence |
 
 ### <a name="fasta"></a>FASTA format
