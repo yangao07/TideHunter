@@ -5,7 +5,7 @@
 [![Published in Bioinformatics](https://img.shields.io/badge/Published%20in-Bioinformatics-blue.svg)](https://doi.org/10.1093/bioinformatics/btz376)
 [![GitHub Issues](https://img.shields.io/github/issues/yangao07/TideHunter.svg?label=Issues)](https://github.com/yangao07/TideHunter/issues)
 [![Build Status](https://img.shields.io/travis/yangao07/TideHunter/master.svg?label=Master)](https://travis-ci.org/yangao07/TideHunter)
-[![License](https://img.shields.io/badge/License-GPL-black.svg)](https://github.com/yangao07/TideHunter/blob/master/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-black.svg)](https://github.com/yangao07/TideHunter/blob/master/LICENSE)
 <!--
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
@@ -16,14 +16,14 @@ Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 wget https://github.com/yangao07/TideHunter/releases/download/v1.3.0/TideHunter-v1.3.0.tar.gz
 tar -zxvf TideHunter-v1.3.0.tar.gz && cd TideHunter-v1.3.0
 ```
-Install via conda and run with test data:
+Make from source and run with test data:
+```
+make; ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
+```
+Or, install via conda and run with test data:
 ```
 conda install -c bioconda tidehunter
 TideHunter ./test_data/test_50x4.fa > cons.fa
-```
-Or, make from source and run with test data:
-```
-make; ./bin/TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
 ## Table of Contents
 
@@ -168,8 +168,24 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 |  6  | consLen     | length of the consensus sequence |
 |  7  | copyNum     | copy number of the tandem repeat |
 |  8  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
-|  9  | subPos      | start coordinates of all the tandem repeat unit sequence, followed by the end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based |
+|  9  | subPos      | start coordinates of all the tandem repeat unit sequence, followed by the end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based, see examples below|
 | 10  | consensus   | consensus sequence |
+
+For example, here are the output for a non-full-length consensus sequence generated from [test_data/test_50x4.fa](test_data/test_50x4.fa) and the adiagram that illustrates all the coordiantes in the output:
+```
+test_50x4 cons0 300 51  250 50  4.0 0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
+```
+<!-- ![example](example_50x4.png) -->
+<img src="example_50x4.png" width="800">
+
+In this example, TideHunter identifies three consecutive complete tandem repeat units, [59,108], [109,158], [159,208], from the raw read which is 300 bp long.
+A consensus sequence with 50 bp is generated from the three complete repeat units. TideHunter further extends the tandem repeat boundary to [51, 250] by aligning the consensus sequence back to the raw read on both sides of the three complete repeat units.
+
+Another example of the output for a full-length consensus sequence generated from [test_data/full_length.fa](test_data/full_length.fa):
+```
+8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  cons0 5231  31  5215  203 8.8 1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
+```
+In this example, the `consLen` (i.e., 203) is the length of the full-length consensus sequence excluding the 5' and 3' primer sequences and the `subPos` (i.e., 207,798,1386,1976,2563,3155,3746,4333,4930) is the coordinate information of the identified complete tandem repeat units.
 
 ### <a name="fasta"></a>FASTA format
 For FASTA output format, the read name contains detailed information of the detected tandem repeat, 
