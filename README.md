@@ -185,7 +185,7 @@ Another example of the output for a full-length consensus sequence generated fro
 ```
 8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  cons0 5231  31  5215  203 8.8 1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
 ```
-In this example, the `consLen` (i.e., 203) is the length of the full-length consensus sequence excluding the 5' and 3' primer sequences and the `subPos` (i.e., 207,798,1386,1976,2563,3155,3746,4333,4930) is the coordinate information of the identified complete tandem repeat units.
+In this example, the `consLen` (i.e., 203) is the length of the full-length consensus sequence excluding the 5' and 3' adapter sequences and the `subPos` (i.e., 207,798,1386,1976,2563,3155,3746,4333,4930) is the coordinate information of the identified complete tandem repeat units.
 
 ### <a name="fasta"></a>FASTA format
 For FASTA output format, the read name contains detailed information of the detected tandem repeat, 
