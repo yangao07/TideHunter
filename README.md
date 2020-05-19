@@ -40,11 +40,11 @@ TideHunter ./test_data/test_50x4.fa > cons.fa
   - [Pre-built binary executable file for Linux/Unix](#binary)
 - [Getting started with toy example in `test_data`](#start)
 - [Usage](#usage)
-  - [To generate consensus in FASTA format](#fasta_cons)
-  - [To generate consensus in tabular format](#tab_cons)
-  - [To generate a full-length consensus](#full_cons)
+  - [To generate consensus sequencesin FASTA format](#fasta_cons)
+  - [To generate consensus sequencesin tabular format](#tab_cons)
+  - [To generate full-length consensus sequences](#full_cons)
   - [To generate unit sequences in FASTA format](#fasta_unit)
-  - [To generate unit sequences in tabular format](#ftab_unit)
+  - [To generate unit sequences in tabular format](#tab_unit)
 - [Commands and options](#cmd)
 - [Input](#input)
   - [Adapter sequence](#adapter)
@@ -103,15 +103,15 @@ TideHunter ./test_data/test_1000x10.fa > cons.fa
 ```
 
 ## <a name="usage"></a>Usage
-#### <a name="fasta_cons"></a>To generate consensus in FASTA format
+#### <a name="fasta_cons"></a>To generate consensus sequences in FASTA format
 ```
 TideHunter ./test_data/test_1000x10.fa > cons.fa
 ```
-#### <a name="tab_cons"></a>To generate consensus in tabular format
+#### <a name="tab_cons"></a>To generate consensus sequences in tabular format
 ```
 TideHunter -f 2 ./test_data/test_1000x10.fa > cons.out
 ```
-#### <a name="full_cons"></a>To generate a full-length consensus sequence
+#### <a name="full_cons"></a>To generate full-length consensus sequences
 ```
 TideHunter -5 ./test_data/5prime.fa -3 ./test_data/3prime.fa ./test_data/full_length.fa > cons_full.fa
 ```
@@ -130,7 +130,7 @@ Options:
     -k --kmer-length INT    k-mer length (no larger than 16). [8]
     -w --window-size INT    window size. [1]
     -s --step-size   INT    step size. [1]
-    -H --HPC-kmer             use homopolymer-compressed k-mer. [False]
+    -H --HPC-kmer           use homopolymer-compressed k-mer. [False]
   Tandem repeat criteria:
     -c --min-copy    INT    minimum copy number of tandem repeat. [2]
     -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats. [0.25]
@@ -198,7 +198,7 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 
 For example, here are the output for a non-full-length consensus sequence generated from [test_data/test_50x4.fa](test_data/test_50x4.fa) and the adiagram that illustrates all the coordiantes in the output:
 ```
-test_50x4 cons0 300 51  250 50  4.0 98.0  0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
+test_50x4 rep0 300 51  250 50  4.0 98.0  0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
 ```
 <!-- ![example](example_50x4.png) -->
 <img src="example_50x4.png" width="800">
@@ -208,7 +208,7 @@ A consensus sequence with 50 bp is generated from the three repeat units. TideHu
 
 Another example of the output for a full-length consensus sequence generated from [test_data/full_length.fa](test_data/full_length.fa):
 ```
-8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  cons0 5231  31  5215  203 8.8 95.5  1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
+8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  rep0 5231  31  5215  203 8.8 95.5  1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
 ```
 In this example, the `consLen` (i.e., 203) is the length of the full-length consensus sequence excluding the 5' and 3' adapter sequences and the `subPos` (i.e., 207,798,1386,1976,2563,3155,3746,4333,4930) contains the coordinate information of the identified tandem repeat units.
 

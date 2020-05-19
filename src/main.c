@@ -80,7 +80,7 @@ static int usage(void)
 	err_printf("    -w --window-size INT    window size. [%d]\n", KMER_WSIZE);
 	err_printf("    -s --step-size   INT    step size. [%d]\n", KMER_SSIZE);
 	//err_printf("    -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
-	err_printf("    -H --HPC-kmer             use homopolymer-compressed k-mer. [False]\n");
+	err_printf("    -H --HPC-kmer           use homopolymer-compressed k-mer. [False]\n");
 
 	//err_printf("\n");
 
