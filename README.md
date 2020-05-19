@@ -11,7 +11,7 @@
 -->
 
 ## Updates (v1.4.0)
-* Add `aveMatch` information for each consensus sequences, denoting the average percent of matched bases between each unit sequence and the consensus sequence.
+* Add `aveMatch` in output for each consensus sequences, denoting the average percent of matched bases between each unit sequence and the consensus sequence.
 * Add option `-u/--unit-seq` to only output the unit sequences of each tandem repeat, no consensus sequence will be generated.
 * Fix a memory leak bug
 
