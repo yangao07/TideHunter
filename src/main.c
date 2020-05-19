@@ -10,7 +10,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.3.0";
+const char VERSION[20] = "1.4.0";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -37,7 +37,8 @@ const struct option mini_tandem_opt [] = {
 	{ "three-prime", 1, NULL, '3' },
 	{ "ada-match-rat", 1, NULL, 'a' },
 
-	{ "cons-out", 1, NULL, 'o' },
+	{ "output", 1, NULL, 'o' },
+    { "unit-seq", 0, NULL, 'u' },
 	{ "longest", 0, NULL, 'l' },
 	{ "full-len", 0, NULL, 'l' },
 	{ "out-fmt", 1, NULL, 'f' },
@@ -111,9 +112,10 @@ static int usage(void)
 	//err_printf("\n");
 
 	err_printf("  Output:\n");
-	err_printf("    -o --cons-out    STR    output file. [stdout]\n");
-	err_printf("    -l --longest            only output the consensus sequence of tandem repeat that covers the longest read sequence. [False]\n");
-	err_printf("    -F --full-len           only output the consensus sequence that is full-length. [False]\n");
+	err_printf("    -o --output      STR    output file. [stdout]\n");
+    err_printf("    -u --unit-seq           only output the unit sequences of each tandem repeat, no consensus sequence. [False]\n");
+	err_printf("    -l --longest            only output the consensus sequence of the tandem repeat that covers the longest read sequence. [False]\n");
+	err_printf("    -F --full-len           only output full-length consensus sequence. [False]\n");
 	err_printf("    -f --out-fmt     INT    output format. [%d]\n", FASTA_FMT);
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
 	err_printf("                            - %d: Tabular\n", TAB_FMT);
@@ -135,6 +137,13 @@ static int usage(void)
 }
 //KSEQ_INIT(gzFile, gzread)
 
+void read_seq_free(kseq_t *read_seq) {
+    free(read_seq->name.s); 
+    free(read_seq->comment.s); 
+    free(read_seq->seq.s); 
+    free(read_seq->qual.s);
+}
+
 int get_seq_from_fx(gzFile fp, char **seq) {
 	kstream_t *fs = ks_init(fp);
 	kseq_t *read_seq = (kseq_t*)calloc(1, sizeof(kseq_t));
@@ -143,7 +152,7 @@ int get_seq_from_fx(gzFile fp, char **seq) {
 	if (kseq_read(read_seq) > 0) {
 		(*seq) = strdup(read_seq->seq.s);
 		len = read_seq->seq.l;
-		free(read_seq); ks_destroy(fs);
+        read_seq_free(read_seq); free(read_seq); ks_destroy(fs);
 		return len;
 	} else {
 		err_func_format_printf(__func__, "No sequence found.\n");
@@ -160,13 +169,6 @@ int mini_tandem_read_seq(kseq_t *read_seq, int chunk_read_n)
 		if (n >= chunk_read_n) break;
 	}
 	return n;
-}
-
-void read_seq_free(kseq_t *read_seq) {
-    free(read_seq->name.s); 
-    free(read_seq->comment.s); 
-    free(read_seq->seq.s); 
-    free(read_seq->qual.s);
 }
 
 thread_aux_t *aux_init(mini_tandem_para *mtp) {
@@ -200,29 +202,45 @@ pthread_rwlock_t RWLOCK;
 // TODO cons.fastq
 // TODO cons.stats
 void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
-	int i, seq_i, cons_i, cons_seq_start = 0, cons_seq_end = 0;
+	int i, j, seq_i, cons_i, cons_seq_start = 0, cons_seq_end = 0;
 	tandem_seq_t *_tseq;
 	for (seq_i = 0; seq_i < n_seqs; ++seq_i) {
 		_tseq = tseq + seq_i;
 		for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start,end
-			if (mtp->out_fmt == FASTA_FMT) {
-				// >readName_consN_readLen:start:end:consLen:copyNum:fullLength
-				fprintf(mtp->cons_out, ">%s_cons%d_%d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
-                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
-                for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
-                fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
-			} else if (mtp->out_fmt == TAB_FMT) {
-				// readName/consN/readLen/start/end/consLen/copyNum/fullLength
-				fprintf(mtp->cons_out, "%s\tcons%d\t%d\t%d\t%d\t%d\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->full_length[cons_i]);
-                fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
-                for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
-                fprintf(mtp->cons_out, ",%d\t", _tseq->sub_pos[cons_i][i]+1);
-			}
-			cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
-			for (i = cons_seq_start; i < cons_seq_end; ++i)  
-				fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
-			cons_seq_start += _tseq->cons_len[cons_i];
-			fprintf(mtp->cons_out, "\n");
+            if (mtp->only_unit) {
+                if (mtp->out_fmt == FASTA_FMT) { // >readName_consN_readLen_subX
+                    for (i = 0; i < _tseq->pos_n[cons_i]-1; ++i) {
+                        fprintf(mtp->cons_out, ">%s_rep%d_sub%d\n", (read_seq+seq_i)->name.s, cons_i, i);
+                        for (j = _tseq->sub_pos[cons_i][i]+1; j <= _tseq->sub_pos[cons_i][i+1]; ++j) 
+                            fprintf(mtp->cons_out, "%c", (read_seq+seq_i)->seq.s[j]);
+                        fprintf(mtp->cons_out, "\n");
+                    }
+                } else if (mtp->out_fmt == TAB_FMT) {
+                    for (i = 0; i < _tseq->pos_n[cons_i]-1; ++i) {
+                        fprintf(mtp->cons_out, "%s\trep%d\tsub%d\t", (read_seq+seq_i)->name.s, cons_i, i);
+                        for (j = _tseq->sub_pos[cons_i][i]+1; j < _tseq->sub_pos[cons_i][i+1]; ++j) 
+                            fprintf(mtp->cons_out, "%c", (read_seq+seq_i)->seq.s[j]);
+                        fprintf(mtp->cons_out, "\n");
+                    }
+                }
+            } else {
+                if (mtp->out_fmt == FASTA_FMT) { // >readName_consN_readLen_start_end_consLen_copyNum_fullLength_subPos
+                    fprintf(mtp->cons_out, ">%s_rep%d_%d_%d_%d_%d_%.1f_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                    fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
+                    for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                    fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
+                } else if (mtp->out_fmt == TAB_FMT) { // readName/consN/readLen/start/end/consLen/copyNum/fullLength
+                    fprintf(mtp->cons_out, "%s\trep%d\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                    fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
+                    for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                    fprintf(mtp->cons_out, ",%d\t", _tseq->sub_pos[cons_i][i]+1);
+                }
+                cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
+                for (i = cons_seq_start; i < cons_seq_end; ++i)  
+                    fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
+                cons_seq_start += _tseq->cons_len[cons_i];
+                fprintf(mtp->cons_out, "\n");
+            }
 		}
 		_tseq->cons_n = 0;
 		_tseq->cons_seq->seq.l = 0;
@@ -260,6 +278,7 @@ tandem_seq_t *alloc_tandem_seq(int n) {
 		tseq[i].cons_start = (int*)_err_malloc(sizeof(int));
 		tseq[i].cons_end = (int*)_err_malloc(sizeof(int));
 		tseq[i].copy_num = (double*)_err_malloc(sizeof(double));
+		tseq[i].ave_match = (double*)_err_malloc(sizeof(double));
 		tseq[i].cons_len = (int*)_err_malloc(sizeof(int));
 		tseq[i].full_length = (int8_t*)_err_malloc(sizeof(int8_t));
 		tseq[i].cons_score = (int*)_err_malloc(sizeof(int));
@@ -274,7 +293,7 @@ void tandem_seq_free(tandem_seq_t *tseq) {
     free(cons_seq->name.s); free(cons_seq->comment.s); free(cons_seq->seq.s); free(cons_seq->qual.s); 
     free(tseq->cons_seq); 
     free(tseq->cons_start); free(tseq->cons_end); 
-    free(tseq->cons_len); free(tseq->copy_num); 
+    free(tseq->cons_len); free(tseq->copy_num); free(tseq->ave_match);
     free(tseq->full_length); free(tseq->cons_score); 
     free(tseq->pos_n); free(tseq->pos_m);
     int i;
@@ -310,6 +329,7 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->gap_ext1 = GAP_EXT1, mtp->gap_ext2 = GAP_EXT2;
 
 	mtp->cons_out = stdout;
+    mtp->only_unit = 0;
 	mtp->only_longest = 0;
 	mtp->only_full_length = 0;
 	mtp->out_fmt = FASTA_FMT;
@@ -398,7 +418,7 @@ int main(int argc, char *argv[])
 	mini_tandem_para *mtp = mini_tandem_init_para();
 	int c, op_idx; char *s;
 	double realtime0 = realtime();
-	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:M:X:E:O:5:3:a:o:lFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
+	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ulFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
             case 'h': return usage();
@@ -442,6 +462,7 @@ int main(int argc, char *argv[])
 			case 'a': mtp->ada_match_rat = atof(optarg); break;
 
 			case 'o': mtp->cons_out = xopen(optarg, "w"); break;
+            case 'u': mtp->only_unit = 1; break;
 			case 'l': mtp->only_longest = 1; break;
 			case 'F': mtp->only_full_length = 1; break;
 			case 'f': mtp->out_fmt = atoi(optarg); 

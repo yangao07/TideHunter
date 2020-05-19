@@ -51,7 +51,7 @@ typedef struct {
     float ada_match_rat;
     char *five_fn, *five_seq, *five_rc_seq; int five_len;
     char *three_fn, *three_seq, *three_rc_seq; int three_len;
-    int out_fmt, only_longest, only_full_length; // only output the cons that spans the longest sequence
+    int out_fmt, only_unit, only_longest, only_full_length; // only output the cons that spans the longest sequence
     FILE *cons_out, *detail_fp; //char detail_out[1024];
     int n_thread;
 } mini_tandem_para;
@@ -60,7 +60,7 @@ typedef struct {
     // TODO kstring_t *output_str;
     seq_t *cons_seq;
     int cons_n, cons_m; 
-    int *cons_start, *cons_end, *cons_len; double *copy_num;
+    int *cons_start, *cons_end, *cons_len; double *copy_num, *ave_match;
     // int8_t *splint_rotated; // use cons_len to partition cons_seq when cons_n > 1
     int8_t *full_length;
     int **sub_pos; int *pos_n, *pos_m;
