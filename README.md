@@ -10,7 +10,7 @@
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
 
-## Updates (v1.4.0)
+## Updates (v1.4.1)
 * Add `aveMatch` in output for each consensus sequence, denoting the average percent of matched bases between each unit sequence and the consensus sequence.
 * Add option `-u/--unit-seq` to only output the unit sequences of each tandem repeat, no consensus sequence will be generated.
 * Fix a memory leak bug
@@ -19,8 +19,8 @@
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.0/TideHunter-v1.4.0.tar.gz
-tar -zxvf TideHunter-v1.4.0.tar.gz && cd TideHunter-v1.4.0
+wget https://github.com/yangao07/TideHunter/releases/download/v1.4.1/TideHunter-v1.4.1.tar.gz
+tar -zxvf TideHunter-v1.4.1.tar.gz && cd TideHunter-v1.4.1
 ```
 Make from source and run with test data:
 ```
@@ -78,9 +78,9 @@ Make sure you have gcc (>=6.4.0) and zlib installed before compiling.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.0/TideHunter-v1.4.0.tar.gz
-tar -zxvf TideHunter-v1.4.0.tar.gz
-cd TideHunter-v1.4.0; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.4.1/TideHunter-v1.4.1.tar.gz
+tar -zxvf TideHunter-v1.4.1.tar.gz
+cd TideHunter-v1.4.1; make
 ```
 Or, you can use `git clone` command to download the source code. 
 Don't forget to include the `--recursive` to download the codes of [abPOA](https://github.com/yangao07/abPOA).
@@ -93,8 +93,8 @@ cd TideHunter; make
 ### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.0/TideHunter-v1.4.0_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.4.0_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.4.1/TideHunter-v1.4.1_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.4.1_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
@@ -198,7 +198,7 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 
 For example, here are the output for a non-full-length consensus sequence generated from [test_data/test_50x4.fa](test_data/test_50x4.fa) and the adiagram that illustrates all the coordiantes in the output:
 ```
-test_50x4 rep0 300 51  250 50  4.0 98.0  0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
+test_50x4 rep0  300 51  250 50  4.0 100.0 0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
 ```
 <!-- ![example](example_50x4.png) -->
 <img src="example_50x4.png" width="800">
@@ -208,7 +208,7 @@ A consensus sequence with 50 bp is generated from the three repeat units. TideHu
 
 Another example of the output for a full-length consensus sequence generated from [test_data/full_length.fa](test_data/full_length.fa):
 ```
-8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  rep0 5231  31  5215  203 8.8 95.5  1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
+8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  rep0  5231  31  5215  203 8.8 95.7  1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
 ```
 In this example, the `consLen` (i.e., 203) is the length of the full-length consensus sequence excluding the 5' and 3' adapter sequences and the `subPos` (i.e., 207,798,1386,1976,2563,3155,3746,4333,4930) contains the coordinate information of the identified tandem repeat units.
 
