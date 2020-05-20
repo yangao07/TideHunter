@@ -107,8 +107,8 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                     double ave_match = 0; int start, end, len, iden_n;
                     for (k = i; k < j-i-1; ++k) {
                         start = par_pos[k]; end = par_pos[k+1]; len = end - start;
-                        iden_n = ksw2_global(bseq+start, len, cons_bseq, cons_len);
-                        // printf("%d %d\n", iden_n, len);
+                        iden_n = ksw2_global(bseq+start+1, len, cons_bseq, cons_len);
+                        // printf("%d %d, %d\n", iden_n, len, cons_len);
                         ave_match += (iden_n * 100 / (len+0.0));
                     }
                     for (s = 0; s < cons_len; ++s) cons_seq[s] = "ACGTN"[cons_bseq[s]]; cons_seq[cons_len] = '\0';

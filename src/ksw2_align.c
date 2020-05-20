@@ -118,9 +118,9 @@ int ksw2_global(const uint8_t *query, int qlen, const uint8_t *target, int tlen)
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
     int w=-1, zdrop=-1, end_bonus=0, flag = 0;
     ksw_extz2_sse(0, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
-    #ifdef __DEBUG__
+#ifdef __DEBUG__
     print_cigar(ez.n_cigar, ez.cigar);
-    #endif
+#endif
     int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, query, target);
     int iden_n = 0;
     if (xid != 0) {
@@ -135,9 +135,9 @@ int ksw2_global_with_cigar(const uint8_t *query, int qlen, const uint8_t *target
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
     int w=-1, zdrop=-1, end_bonus=0, flag = 0;
     ksw_extz2_sse(0, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
-    #ifdef __DEBUG__
+#ifdef __DEBUG__
     print_cigar(ez.n_cigar, ez.cigar);
-    #endif
+#endif
     int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, query, target);
     int iden_n = 0;
     if (xid != 0) {
@@ -180,10 +180,10 @@ int ksw2_right_extend(const uint8_t *query, int qlen, const uint8_t *target, int
     ksw_extz_t ez; memset(&ez, 0, sizeof(ksw_extz_t));
     int w=-1, zdrop=-1, end_bonus=0, flag = KSW_EZ_RIGHT | KSW_EZ_EXTZ_ONLY;
     ksw_extz2_sse(0, qlen, query, tlen, target, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
-    #ifdef __DEBUG__
+#ifdef __DEBUG__
     printf("max_q: %d, max_t: %d, qlen: %d, tlen: %d\n", ez.max_q, ez.max_t, qlen, tlen);
     print_cigar(ez.n_cigar, ez.cigar);
-    #endif
+#endif
     int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, query, target);
     int iden_n = 0;
     if (xid != 0) {
@@ -207,10 +207,10 @@ int ksw2_left_extend(const uint8_t *query, int qlen, const uint8_t *target, int 
     for (i = 0; i < tlen; ++i) rtarget[i] = target[tlen-i-1];
     int w=-1, zdrop=-1, end_bonus=0, flag=KSW_EZ_RIGHT | KSW_EZ_EXTZ_ONLY;
     ksw_extz2_sse(0, qlen, rquery, tlen, rtarget, 5, mat, gap_open, gap_ext, w, zdrop, end_bonus, flag, &ez);
-    #ifdef __DEBUG__
+#ifdef __DEBUG__
     printf("max_q: %d, max_t: %d, qlen: %d, tlen: %d\n", ez.max_q, ez.max_t, qlen, tlen);
     print_cigar(ez.n_cigar, ez.cigar);
-    #endif
+#endif
     int *xid = ksw2_get_xid(ez.cigar, ez.n_cigar, rquery, rtarget);
     int iden_n = 0;
     if (xid != 0) {
