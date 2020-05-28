@@ -105,7 +105,7 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                     cons_len = abpoa_gen_cons(ab, abpt, bseq, seq_len, par_pos+i, j-i, cons_bseq);
                     // invoke ksw2_global to calculate iden_n / unit_len 
                     double ave_match = 0; int start, end, len, iden_n;
-                    for (k = i; k < j-i-1; ++k) {
+                    for (k = i; k < j-1; ++k) {
                         start = par_pos[k]; end = par_pos[k+1]; len = end - start;
                         iden_n = ksw2_global(bseq+start+1, len, cons_bseq, cons_len);
                         // printf("%d %d, %d\n", iden_n, len, cons_len);
