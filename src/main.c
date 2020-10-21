@@ -10,7 +10,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.4.2";
+const char VERSION[20] = "1.4.3";
 const char CONTACT[30] = "yangao07@hit.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -76,22 +76,22 @@ static int usage(void)
 
 	err_printf("Options: \n");
 	err_printf("  Seeding:\n");
-	err_printf("    -k --kmer-length INT    k-mer length (no larger than %d). [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
-	err_printf("    -w --window-size INT    window size. [%d]\n", KMER_WSIZE);
-	err_printf("    -s --step-size   INT    step size. [%d]\n", KMER_SSIZE);
-	//err_printf("    -m --minimal-m   [INT]    number of minimal k-mer to keep in each window. [%d]\n", KMER_MINM);
-	err_printf("    -H --HPC-kmer           use homopolymer-compressed k-mer. [False]\n");
+	err_printf("    -k --kmer-length INT    k-mer length (no larger than %d) [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
+	err_printf("    -w --window-size INT    window size [%d]\n", KMER_WSIZE);
+	err_printf("    -s --step-size   INT    step size [%d]\n", KMER_SSIZE);
+	//err_printf("    -m --minimal-m   [INT]    number of minimal k-mer to keep in each window [%d]\n", KMER_MINM);
+	err_printf("    -H --HPC-kmer           use homopolymer-compressed k-mer [False]\n");
 
 	//err_printf("\n");
 
 	err_printf("  Tandem repeat criteria:\n");
 	// TODO min_copy < 2 ???
-	err_printf("    -c --min-copy    INT    minimum copy number of tandem repeat. [%d]\n", MIN_COPY);
-	err_printf("    -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats. [%.2f]\n", MAX_DIV);
-	err_printf("    -p --min-period  INT    minimum period size of tandem repeat. (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
-	err_printf("    -P --max-period  INT    maximum period size of tandem repeat. (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
+	err_printf("    -c --min-copy    INT    minimum copy number of tandem repeat [%d]\n", MIN_COPY);
+	err_printf("    -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats [%.2f]\n", MAX_DIV);
+	err_printf("    -p --min-period  INT    minimum period size of tandem repeat (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
+	err_printf("    -P --max-period  INT    maximum period size of tandem repeat (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
 
-//  err_printf("    -r --rep-range   [INT]    maximum range to find tandem repeat. [%d]\n", REP_RANGE); 
+//  err_printf("    -r --rep-range   [INT]    maximum range to find tandem repeat [%d]\n", REP_RANGE); 
 //  err_printf("                                   (-1: no limit, tandem repeat can span the whole sequence)\n");
 	//err_printf("\n");
 
@@ -105,32 +105,32 @@ static int usage(void)
     err_printf("                            - affine (set O2 as 0): O1+g*E1\n");
     err_printf("                            - linear (set O1 as 0): g*E1\n");
 	err_printf("  Adapter sequence:\n");
-	err_printf("    -5 --five-prime  STR    5' adapter sequence (sense strand). [NULL]\n");
-	err_printf("    -3 --three-prime STR    3' adapter sequence (anti-sense strand). [NULL]\n");
-	err_printf("    -a --ada-mat-rat FLT    minimum match ratio of adapter sequence. [%.2f]\n", ADA_MATCH_RAT);
+	err_printf("    -5 --five-prime  STR    5' adapter sequence (sense strand) [NULL]\n");
+	err_printf("    -3 --three-prime STR    3' adapter sequence (anti-sense strand) [NULL]\n");
+	err_printf("    -a --ada-mat-rat FLT    minimum match ratio of adapter sequence [%.2f]\n", ADA_MATCH_RAT);
 
 	//err_printf("\n");
 
 	err_printf("  Output:\n");
-	err_printf("    -o --output      STR    output file. [stdout]\n");
-    err_printf("    -u --unit-seq           only output the unit sequences of each tandem repeat, no consensus sequence. [False]\n");
-	err_printf("    -l --longest            only output the consensus sequence of the tandem repeat that covers the longest read sequence. [False]\n");
-	err_printf("    -F --full-len           only output full-length consensus sequence. [False]\n");
-	err_printf("    -f --out-fmt     INT    output format. [%d]\n", FASTA_FMT);
+	err_printf("    -o --output      STR    output file [stdout]\n");
+    err_printf("    -u --unit-seq           only output the unit sequences of each tandem repeat, no consensus sequence [False]\n");
+	err_printf("    -l --longest            only output the consensus sequence of the tandem repeat that covers the longest read sequence [False]\n");
+	err_printf("    -F --full-len           only output full-length consensus sequence [False]\n");
+	err_printf("    -f --out-fmt     INT    output format [%d]\n", FASTA_FMT);
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
 	err_printf("                            - %d: Tabular\n", TAB_FMT);
-	//err_printf("    -S --splint-seq  STR    splint sequence in FASTA/FASTQ format. [NULL]\n");
-	//err_printf("    -d --detail-out  STR    detailed information of each consensus. [NULL]\n");
+	//err_printf("    -S --splint-seq  STR    splint sequence in FASTA/FASTQ format [NULL]\n");
+	//err_printf("    -d --detail-out  STR    detailed information of each consensus [NULL]\n");
 	//err_printf("                              (start, end, score, etc.)\n");
 
 	//err_printf("\n");
 
 	err_printf("  Computing resource:\n");
-	err_printf("    -t --thread      INT    number of threads to use. [%d]\n\n", THREAD_N);
+	err_printf("    -t --thread      INT    number of threads to use [%d]\n\n", THREAD_N);
 
     err_printf("  General options:\n");
-    err_printf("    -h --help               print this help usage information.\n");
-    err_printf("    -v --version            show version number.\n");
+    err_printf("    -h --help               print this help usage information\n");
+    err_printf("    -v --version            show version number\n");
 
 	err_printf("\n");
 	return 1;
