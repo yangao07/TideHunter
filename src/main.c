@@ -40,7 +40,7 @@ const struct option mini_tandem_opt [] = {
 	{ "output", 1, NULL, 'o' },
     { "unit-seq", 0, NULL, 'u' },
 	{ "longest", 0, NULL, 'l' },
-	{ "full-len", 0, NULL, 'l' },
+	{ "full-len", 0, NULL, 'F' },
 	{ "out-fmt", 1, NULL, 'f' },
 	// { "detail-out", 1, NULL, 'd' },
 
@@ -416,7 +416,7 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 int main(int argc, char *argv[])
 {
 	mini_tandem_para *mtp = mini_tandem_init_para();
-	int c, op_idx; char *s;
+	int c, op_idx=0; char *s;
 	double realtime0 = realtime();
 	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ulFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
@@ -467,7 +467,7 @@ int main(int argc, char *argv[])
 			case 'F': mtp->only_full_length = 1; break;
 			case 'f': mtp->out_fmt = atoi(optarg); 
 					  if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT) {
-						  err_printf("\n[main] Error: unknown format number: %d. (-%c --%s)\n", atoi(optarg), c, mini_tandem_opt[op_idx].name);
+						  err_printf("\n[main] Error: unknown format number. (-%c)\n", c);
 						  goto End;
 					  }
 					  break;

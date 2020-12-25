@@ -1,3 +1,4 @@
+CC      =   gcc
 CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation
 
 # for debug
@@ -124,7 +125,7 @@ $(SRC_DIR)/edlib_align.o: $(SRC_DIR)/edlib_align.c $(SRC_DIR)/edlib_align.h
 $(ABPOALIB): 
 	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
 	cd $(ABPOA_DIR); \
-	make libabpoa PREFIX=$(PWD) $(ABPOA_SIMD_FLAG) $(INCLUDE_FLAG) CFLAGS="-Wall -O3 $(LIB_FLAG) -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation"
+	make libabpoa PREFIX=$(PWD) $(ABPOA_SIMD_FLAG) $(INCLUDE_FLAG) CFLAGS="$(LIB_FLAG) $(CFLAGS)"
 
 
 # ksw2
