@@ -8,7 +8,7 @@
 #include "utils.h"
 
 void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, double ave_match, mini_tandem_para *mtp, int8_t full_length, int *par_pos, int pos_n) {
-    if (cons_len < mtp->min_p || cons_len > mtp->max_p) return;
+    if (cons_len < mtp->min_len || cons_len > mtp->max_p) return;
     if (mtp->only_longest && tseq->cons_n == 1) {
         if (end-start > tseq->cons_end[0]-tseq->cons_start[0]) {
             tseq->cons_n = 0; tseq->cons_seq->seq.l = 0;

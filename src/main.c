@@ -17,7 +17,6 @@ const struct option mini_tandem_opt [] = {
 	{ "kmer-length", 1, NULL, 'k' },
 	{ "window-size", 1, NULL, 'w' },
 	{ "step-size", 1, NULL, 's' },
-	// { "minimal-m", 1, NULL, 'm' },
 	{ "HPC-kmer", 0, NULL, 'H' },
 
 	{ "min-copy", 1, NULL, 'c' },
@@ -38,6 +37,7 @@ const struct option mini_tandem_opt [] = {
 	{ "ada-match-rat", 1, NULL, 'a' },
 
 	{ "output", 1, NULL, 'o' },
+	{ "min-len", 1, NULL, 'm' },
     { "unit-seq", 0, NULL, 'u' },
 	{ "longest", 0, NULL, 'l' },
 	{ "full-len", 0, NULL, 'F' },
@@ -79,7 +79,6 @@ static int usage(void)
 	err_printf("    -k --kmer-length INT    k-mer length (no larger than %d) [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
 	err_printf("    -w --window-size INT    window size [%d]\n", KMER_WSIZE);
 	err_printf("    -s --step-size   INT    step size [%d]\n", KMER_SSIZE);
-	//err_printf("    -m --minimal-m   [INT]    number of minimal k-mer to keep in each window [%d]\n", KMER_MINM);
 	err_printf("    -H --HPC-kmer           use homopolymer-compressed k-mer [False]\n");
 
 	//err_printf("\n");
@@ -113,8 +112,9 @@ static int usage(void)
 
 	err_printf("  Output:\n");
 	err_printf("    -o --output      STR    output file [stdout]\n");
-    err_printf("    -u --unit-seq           only output the unit sequences of each tandem repeat, no consensus sequence [False]\n");
-	err_printf("    -l --longest            only output the consensus sequence of the tandem repeat that covers the longest read sequence [False]\n");
+	err_printf("    -m --min-len     [INT]  only output consensus sequence with min. length of [%d]\n", DEF_MIN_LEN);
+    err_printf("    -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]\n");
+	err_printf("    -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]\n");
 	err_printf("    -F --full-len           only output full-length consensus sequence [False]\n");
 	err_printf("    -f --out-fmt     INT    output format [%d]\n", FASTA_FMT);
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
@@ -208,7 +208,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
 		_tseq = tseq + seq_i;
 		for (cons_i = 0; cons_i < _tseq->cons_n; ++cons_i) { // TODO cons sorted by start,end
             if (mtp->only_unit) {
-                if (mtp->out_fmt == FASTA_FMT) { // >readName_consN_readLen_subX
+                if (mtp->out_fmt == FASTA_FMT) { // >readName_repN_subX
                     for (i = 0; i < _tseq->pos_n[cons_i]-1; ++i) {
                         fprintf(mtp->cons_out, ">%s_rep%d_sub%d\n", (read_seq+seq_i)->name.s, cons_i, i);
                         for (j = _tseq->sub_pos[cons_i][i]+1; j <= _tseq->sub_pos[cons_i][i+1]; ++j) 
@@ -224,12 +224,12 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
                     }
                 }
             } else {
-                if (mtp->out_fmt == FASTA_FMT) { // >readName_consN_readLen_start_end_consLen_copyNum_fullLength_subPos
-                    fprintf(mtp->cons_out, ">%s_rep%d_%d_%d_%d_%d_%.1f_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                if (mtp->out_fmt == FASTA_FMT) { // >readName_repN readLen_start_end_consLen_copyNum_aveMatchRatio_fullLength_subPos
+                    fprintf(mtp->cons_out, ">%s_rep%d %d_%d_%d_%d_%.1f_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
                     fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
-                } else if (mtp->out_fmt == TAB_FMT) { // readName/consN/readLen/start/end/consLen/copyNum/fullLength
+                } else if (mtp->out_fmt == TAB_FMT) { // readName/repN/readLen/start/end/consLen/copyNum/aveMatchRatio/fullLength
                     fprintf(mtp->cons_out, "%s\trep%d\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
@@ -316,7 +316,6 @@ mini_tandem_para *mini_tandem_init_para(void) {
 	mtp->k = KMER_SIZE;
 	mtp->w = KMER_WSIZE;
 	mtp->s = KMER_SSIZE;
-	mtp->m = KMER_MINM;
 	mtp->hpc = 0;
 	mtp->min_copy = MIN_COPY;
 	mtp->max_div = MAX_DIV;
@@ -329,6 +328,7 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->gap_ext1 = GAP_EXT1, mtp->gap_ext2 = GAP_EXT2;
 
 	mtp->cons_out = stdout;
+	mtp->min_len = DEF_MIN_LEN;
     mtp->only_unit = 0;
 	mtp->only_longest = 0;
 	mtp->only_full_length = 0;
@@ -431,7 +431,6 @@ int main(int argc, char *argv[])
 				      }
 				      break;
 			case 'w': mtp->w = atoi(optarg); break;
-			case 'm': mtp->m = atoi(optarg); break;
 			case 's': mtp->s = atoi(optarg); break;
 			case 'H': mtp->hpc = 1; break;
 
@@ -462,6 +461,7 @@ int main(int argc, char *argv[])
 			case 'a': mtp->ada_match_rat = atof(optarg); break;
 
 			case 'o': mtp->cons_out = xopen(optarg, "w"); break;
+			case 'm': mtp->min_len = atoi(optarg); break;
             case 'u': mtp->only_unit = 1; break;
 			case 'l': mtp->only_longest = 1; break;
 			case 'F': mtp->only_full_length = 1; break;
@@ -475,7 +475,6 @@ int main(int argc, char *argv[])
 			case 't': mtp->n_thread = atoi(optarg); break;
 
 			default:
-					  err_printf("\n[main] Error: unknown option: -%c %s.\n", c, optarg);
 					  goto End;
 		}
 	}

@@ -148,9 +148,10 @@ Options:
     -3 --three-prime STR    3' adapter sequence (anti-sense strand). [NULL]
     -a --ada-mat-rat FLT    minimum match ratio of adapter sequence. [0.80]
   Output:
-    -o --output      STR    output file. [stdout]
-    -u --unit-seq           only output the unit sequences of each tandem repeat, no consensus sequence. [False]
-    -l --longest            only output the consensus sequence of the tandem repeat that covers the longest read sequence. [False]
+    -o --output      STR    output file [stdout]
+    -m --min-len     [INT]  only output consensus sequence with min. length of [30]
+    -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]
+    -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]
     -F --full-len           only output full-length consensus sequence. [False]
     -f --out-fmt     INT    output format. [1]
                             - 1: FASTA
@@ -217,7 +218,7 @@ The sequence is the consensus sequence.
 
 The read name of each consensus sequence has the following format:
 ```
->readName_repN_readLen_start_end_consLen_copyNum_aveMatch_fullLen_subPos
+>readName_repN readLen_start_end_consLen_copyNum_aveMatch_fullLen_subPos
 ```
 
 ### <a name="unit"></a>Unit sequences
@@ -228,15 +229,15 @@ TideHunter can output the unit sequences without performing the consensus callin
 |:---:|   :---      | ---        |
 |  1  | readName    | the original read name |
 |  2  | repN        | `N` is the ID number of the tandem repeat, within each read, starts from 0 |
-|  3  | unitX       | `X` is the ID number of the unit sequence, starts from 0 |
+|  3  | subX        | `X` is the ID number of the unit sequence, starts from 0 |
 |  4  | unitSeq     | unit sequence |
 
 
 And for the FASTA format:
 ```
->readName_repN_unitX
+>readName_repN_subX
 unitSeq X
->readName_repN_unitY
+>readName_repN_subY
 unitSeq Y
 ```
 

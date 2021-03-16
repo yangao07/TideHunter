@@ -251,10 +251,8 @@ int overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int 
 // h: kmer-key | rightmost-pos
 int build_kmer_hash(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h) {
     if (mtp->w > 1) { // do min hash
-        if (mtp->m == 1) {
-            if (mtp->s >= mtp->w) return non_overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
-            else return overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
-        } // else return min_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->m, mtp->hpc, h);
+        if (mtp->s >= mtp->w) return non_overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
+        else return overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
     } else { // do direct hash
         return direct_hash(bseq, seq_len, mtp->k, mtp->s, mtp->hpc, h);
     }

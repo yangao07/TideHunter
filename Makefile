@@ -1,4 +1,4 @@
-CC      =   gcc
+#CC      =   gcc
 CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation
 
 # for debug

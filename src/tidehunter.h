@@ -13,7 +13,7 @@ KSEQ_INIT(gzFile, gzread)
 #define MAX_KMER_SIZE 16 // uint32_t
 #define KMER_WSIZE 1 // window size
 #define KMER_SSIZE 1 // step size
-#define KMER_MINM 1  // 1: minimizer
+//#define KMER_MINM 1  // 1: minimizer
 
 #define REP_RANGE -1 // -1: unlimited
 #define MIN_COPY 2
@@ -23,6 +23,7 @@ KSEQ_INIT(gzFile, gzread)
 #define MAX_PERIOD UINT32_MAX
 #define DEF_MAX_PERIOD 10000 // UINT16_MAX
 #define DEF_MAX_PERIOD_STR "10K" // UINT16_MAX
+#define DEF_MIN_LEN 30
 
 #define MATCH 2
 #define MISMATCH 4
@@ -41,7 +42,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    int64_t k, w, s, m; int hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
+    int64_t k, w, s; int hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
     int min_copy; double max_div, div_exp; // max allowed divergence
     int64_t min_p, max_p; // min/max period size
     int64_t max_range; // max range to find tandem repeat, -1 for no limit
@@ -51,7 +52,7 @@ typedef struct {
     float ada_match_rat;
     char *five_fn, *five_seq, *five_rc_seq; int five_len;
     char *three_fn, *three_seq, *three_rc_seq; int three_len;
-    int out_fmt, only_unit, only_longest, only_full_length; // only output the cons that spans the longest sequence
+    int out_fmt, min_len, only_unit, only_longest, only_full_length; // only output the cons that spans the longest sequence
     FILE *cons_out, *detail_fp; //char detail_out[1024];
     int n_thread;
 } mini_tandem_para;
