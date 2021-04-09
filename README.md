@@ -10,15 +10,15 @@
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
 
-## Updates (v1.4.3)
+## Updates (v1.4.4)
 * Update to the latest abPOA
 
 
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.3/TideHunter-v1.4.3.tar.gz
-tar -zxvf TideHunter-v1.4.3.tar.gz && cd TideHunter-v1.4.3
+wget https://github.com/yangao07/TideHunter/releases/download/v1.4.4/TideHunter-v1.4.4.tar.gz
+tar -zxvf TideHunter-v1.4.4.tar.gz && cd TideHunter-v1.4.4
 ```
 Make from source and run with test data:
 ```
@@ -76,9 +76,9 @@ Make sure you have gcc (>=6.4.0) and zlib installed before compiling.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.3/TideHunter-v1.4.3.tar.gz
-tar -zxvf TideHunter-v1.4.3.tar.gz
-cd TideHunter-v1.4.3; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.4.4/TideHunter-v1.4.4.tar.gz
+tar -zxvf TideHunter-v1.4.4.tar.gz
+cd TideHunter-v1.4.4; make
 ```
 Or, you can use `git clone` command to download the source code. 
 Don't forget to include the `--recursive` to download the codes of [abPOA](https://github.com/yangao07/abPOA).
@@ -91,8 +91,8 @@ cd TideHunter; make
 ### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.3/TideHunter-v1.4.3_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.4.3_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.4.4/TideHunter-v1.4.4_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.4.4_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
@@ -123,17 +123,18 @@ TideHunter -u -f 2 ./test_data/test_1000x10.fa > unit.out
 ```
 ## <a name="cmd"></a>Commands and options
 ```
+Usage:   TideHunter [options] in.fa/fq > cons.fa
+
 Options: 
   Seeding:
-    -k --kmer-length INT    k-mer length (no larger than 16). [8]
-    -w --window-size INT    window size. [1]
-    -s --step-size   INT    step size. [1]
-    -H --HPC-kmer           use homopolymer-compressed k-mer. [False]
+    -k --kmer-length INT    k-mer length (no larger than 16) [8]
+    -w --window-size INT    window size, set as >1 to enable minimizer seeding [1]
+    -H --HPC-kmer           use homopolymer-compressed k-mer [False]
   Tandem repeat criteria:
-    -c --min-copy    INT    minimum copy number of tandem repeat. [2]
-    -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats. [0.25]
-    -p --min-period  INT    minimum period size of tandem repeat. (>=2) [30]
-    -P --max-period  INT    maximum period size of tandem repeat. (<=4294967295) [10K]
+    -c --min-copy    INT    minimum copy number of tandem repeat [2]
+    -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats [0.25]
+    -p --min-period  INT    minimum period size of tandem repeat (>=2) [30]
+    -P --max-period  INT    maximum period size of tandem repeat (<=4294967295) [10K]
   Scoring parameters for partial order alignment:
     -M --match    INT       match score [2]
     -X --mismatch INT       mismatch penalty [4]
@@ -144,24 +145,24 @@ Options:
                             - affine (set O2 as 0): O1+g*E1
                             - linear (set O1 as 0): g*E1
   Adapter sequence:
-    -5 --five-prime  STR    5' adapter sequence (sense strand). [NULL]
-    -3 --three-prime STR    3' adapter sequence (anti-sense strand). [NULL]
-    -a --ada-mat-rat FLT    minimum match ratio of adapter sequence. [0.80]
+    -5 --five-prime  STR    5' adapter sequence (sense strand) [NULL]
+    -3 --three-prime STR    3' adapter sequence (anti-sense strand) [NULL]
+    -a --ada-mat-rat FLT    minimum match ratio of adapter sequence [0.80]
   Output:
     -o --output      STR    output file [stdout]
     -m --min-len     [INT]  only output consensus sequence with min. length of [30]
     -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]
     -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]
-    -F --full-len           only output full-length consensus sequence. [False]
-    -f --out-fmt     INT    output format. [1]
+    -F --full-len           only output full-length consensus sequence [False]
+    -f --out-fmt     INT    output format [1]
                             - 1: FASTA
                             - 2: Tabular
   Computing resource:
-    -t --thread      INT    number of threads to use. [4]
+    -t --thread      INT    number of threads to use [4]
 
   General options:
-    -h --help               print this help usage information.
-    -v --version            show version number.
+    -h --help               print this help usage information
+    -v --version            show version number
 ```
 
 ## <a name="input_output"></a>Input
@@ -185,11 +186,11 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 |:---:|   :---      | ---        |
 |  1  | readName    | the original read name |
 |  2  | repN        | `N` is the ID number of the tandem repeat, within each read, starts from 0 |
-|  3  | readLen     | length of the original long read |
-|  4  | start       | start coordinate of the tandem repeat, 1-based |
-|  5  | end         | end coordinate of the tandem repeat, 1-based |
-|  6  | consLen     | length of the consensus sequence |
-|  7  | copyNum     | copy number of the tandem repeat |
+|  3  | copyNum     | copy number of the tandem repeat |
+|  4  | readLen     | length of the original long read |
+|  5  | start       | start coordinate of the tandem repeat, 1-based |
+|  6  | end         | end coordinate of the tandem repeat, 1-based |
+|  7  | consLen     | length of the consensus sequence |
 |  8  | aveMatch    | average percent of matches between each unit sequence and the consensus sequence (# matched bases / unit length)|
 |  9  | fullLen     | 0: not a full-length sequence, 1: sense strand full-length, 2: anti-sense strand full-length |
 |  10  | subPos     | start coordinates of all the tandem repeat unit sequence, followed by the end coordinate of the last tandem repeat unit sequence, separated by `,`, all coordinates are 1-based, see examples below|
@@ -197,7 +198,7 @@ For tabular format, 9 columns will be generated for each consensus sequence:
 
 For example, here are the output for a non-full-length consensus sequence generated from [test_data/test_50x4.fa](test_data/test_50x4.fa) and the adiagram that illustrates all the coordiantes in the output:
 ```
-test_50x4 rep0  300 51  250 50  4.0 100.0 0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
+test_50x4 rep0  4.0 300 51  250 50  100.0 0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
 ```
 <!-- ![example](example_50x4.png) -->
 <img src="example_50x4.png" width="800">
@@ -207,18 +208,18 @@ A consensus sequence with 50 bp is generated from the three repeat units. TideHu
 
 Another example of the output for a full-length consensus sequence generated from [test_data/full_length.fa](test_data/full_length.fa):
 ```
-8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  rep0  5231  31  5215  203 8.8 95.7  1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
+8f2f7766-4b8e-4c0d-9e2b-caf0e5527b19  rep0  8.8  5231  31  5215  203 95.7  1 207,798,1386,1976,2563,3155,3746,4333,4930  ACTAATAAGATCAACAGAATCAGAGTAGATAGTTCCTTGATCGGAACCAAAGGACCCCGTGCCTCAATCTCTATCCTGATGTCATGGGAGTCCTAGCAAAGCTATAGACTCAAGCAAGGCTTGGGGTCCTTTATGGAACCCAAGGATGACTCAGCAATAAAATATTTTGGTTTTGGTTTATAAAAAAAAAAAAAAAAAAAAAA
 ```
 In this example, the `consLen` (i.e., 203) is the length of the full-length consensus sequence excluding the 5' and 3' adapter sequences and the `subPos` (i.e., 207,798,1386,1976,2563,3155,3746,4333,4930) contains the coordinate information of the identified tandem repeat units.
 
 ### <a name="fasta"></a>FASTA format
-For FASTA output format, the read name contains detailed information of the detected tandem repeat, 
+For FASTA output format, the read name and the comment provide detailed information of the detected tandem repeat, 
 i.e., the above columns 1 \~ 10.
 The sequence is the consensus sequence.
 
-The read name of each consensus sequence has the following format:
+The read name and comment of each consensus sequence have the following format:
 ```
->readName_repN readLen_start_end_consLen_copyNum_aveMatch_fullLen_subPos
+>readName_repN_copyNum readLen_start_end_consLen_aveMatch_fullLen_subPos
 ```
 
 ### <a name="unit"></a>Unit sequences
@@ -242,7 +243,7 @@ unitSeq Y
 ```
 
 ## <a name="contact"></a>Contact
-Yan Gao yangao07@hit.edu.cn
+Yan Gao gaoy286@mail.sysu.edu.cn
 
 Yadong Wang ydwang@hit.edu.cn
 

@@ -24,7 +24,7 @@ int *partition_seqs_core(char *seq, int seq_len, int8_t *hit_array, int est_peri
     printf("\n");
 #endif
     // partition seq into period seperated seqs
-    int par_i = 0, l, tot_len; 
+    int par_i = 0, l; 
     char *query_seq, *target_seq; int copy_num, ed, start, end, target_start;
     //  extend two ends
     l = est_period / 2;
@@ -46,7 +46,6 @@ int *partition_seqs_core(char *seq, int seq_len, int8_t *hit_array, int est_peri
         // printf("%d: %d, %d, %d\n", pos_array[i], period[pos_array[i]], period[pos_array[i+1]], ave_p);
         copy_num = (int)((double)(pos_array[i+1] - pos_array[i]) / est_period + 0.5);
         if (copy_num > 1) { // multiple copies: semi-global alignment of prefix l-mer using edlib
-            tot_len = pos_array[i+1] - pos_array[i];
             query_seq = seq + pos_array[i];
             for (j = 1; j < copy_num; ++j) {
                 target_start = pos_array[i] + est_period * j - (l << 0);

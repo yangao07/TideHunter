@@ -34,104 +34,24 @@ static inline uint64_t inv_hash64(uint64_t key, uint64_t mask)
 }
 
 // hash: kmer-key | rightmost-pos
-int direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
+int direct_hash(uint8_t *bseq, int seq_len, int k, int use_hpc, hash_t *h) {
     int c, l, hi=0, pos; uint32_t key, mask = ((uint64_t)1 << 2*k) - 1;
 
     for (key = l = pos = 0; pos < seq_len; ++pos) {
         c = bseq[pos];
+        if (c >= 4) {
+            key = 0; l = 0;
+            continue;
+        }
         if (use_hpc) while (pos+1 < seq_len && bseq[pos+1] == c) ++pos;
         key = key << 2 | c;
-        if (++l == k) { // get a kmer
-            key &= mask; h[hi++] = ((hash_t)key << 32) | pos;
-            if (s > k) {
-                l = 0;
-                // skip s-k bps
-                if (use_hpc) {
-                    while (l < s-k) {
-                        while (pos + 1 < seq_len && bseq[pos+1] == bseq[pos]) ++pos;
-                        ++l; ++pos;
-                    }
-                    l = 0;
-                } else pos += (s-k);
-            } else l = k-s;
-        }
-    }
-#ifdef __DEBUG__
-    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
-#endif
-    return hi;
-}
-
-int overlap_direct_hash(uint8_t *bseq, int seq_len, int k, int s, int use_hpc, hash_t *h) {
-    int c, l, hi=0, pos; uint32_t key, mask = ((uint64_t)1 << 2*k) - 1;
-
-    for (key = pos = l = 0; pos < seq_len; ++pos) {
-        c = bseq[pos];
-        if (use_hpc) while (pos + 1 < seq_len && bseq[pos+1] == c) ++pos;
-        key = key << 2 | c;
-        if (++l == k) { // get a kmer
-            key &= mask; h[hi++] = ((hash_t)key << 32) | pos;
-            l = k-s;
-        }
-    }
-#ifdef __DEBUG__
-    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
-#endif
-    return hi;
-}
-
-// para:
-// bseq:    seq integer
-// seq_len: seq length
-// k:       kmer length
-// s:       window step
-// w:       window size (s>=w, non-overlap window)
-// use_hpc: use homopolymer-compressed kmer
-// h:       kmer-key | rightmost-pos
-// non_overlap: no need to use buffer to store previous kmer hash values
-int non_overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
-    int c, l, j, pos, min_pos, hi=0;
-    uint32_t key, minimizer, hash_value, mask = ((uint64_t)1 << 2*k) - 1;
-    int *equal_min_pos = (int*)_err_malloc(w * sizeof(int)), equal_n;
-
-    minimizer = UINT32_MAX; equal_n = 0;
-    for (key = l = pos = 0; pos < seq_len; ++pos) {
-        c = bseq[pos];
-        if (use_hpc) while (pos + 1 < seq_len && bseq[pos+1] == c) ++pos;
-        key = key << 2 | c;
-
         if (++l >= k) { // get a kmer
-            key &= mask; hash_value = inv_hash32(key);
-            if (hash_value < minimizer) {
-                min_pos = pos; minimizer = hash_value; equal_n = 0;
-            } else if (hash_value == minimizer) {
-                equal_min_pos[equal_n++] = pos;
-            }
-            if (l == k+w-1) { // reach a w
-                h[hi++] = ((hash_t)minimizer << 32) | min_pos;
-                for (j = 0; j < equal_n; ++j) { 
-                    h[hi++] = ((hash_t)minimizer << 32) | equal_min_pos[j];
-                }
-
-                if (s >= l) { // total non-overlap
-                    // skip s-l bps
-                    if (use_hpc) {
-                        while (l < s) {
-                            while (pos + 1 < seq_len && bseq[pos+1] == bseq[pos] && l < s) ++pos;
-                            ++l; ++pos;
-                        }
-                    } else pos += (s-l);
-                    l = 0;
-                } else l = l-s; // overlap with next first kmer
-                minimizer = UINT32_MAX; equal_n = 0;
-            }
+            key &= mask; h[hi++] = ((hash_t)key << 32) | pos;
         }
     }
-
 #ifdef __DEBUG__
-    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+    for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
 #endif
-    free(equal_min_pos);
     return hi;
 }
 
@@ -146,115 +66,102 @@ typedef struct { uint32_t x, y; } u64_t;
         min_buf_pos = i;    \
     }   \
 }
-// First w-s: |===w-s===|...
-//            |next mini|...
-// Next s:    |===w-s===|==s==|...
-//            |==s==|next mini|...
-// Next s:    |===w-s===|==s==|==s==|...
-//            |==s==|==s==|next mini|...
-int overlap_minimizer_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int use_hpc, hash_t *h) {
-    int i, l, c, hi = 0;
-    int pos, buf_pos, min_buf_pos, last_min_buf_pos=-1, equal_n, *equal_min_pos = (int*)_err_malloc(w * sizeof(int));
-    uint32_t key, mask = ((uint64_t)1 << 2*k) - 1; 
-    u64_t buf[256], minimizer, tmp;
 
-    key = 0; minimizer.x = UINT32_MAX; equal_n = 0; min_buf_pos = -2;
-    // first w-s
-    for (pos = l = buf_pos = 0; pos < seq_len; ++pos) {
-        c = bseq[pos];
-        if (use_hpc) while (pos + 1 < seq_len && bseq[pos+1] == c) ++pos;
-        key = key << 2 | c;
+typedef struct { // a simplified version of kdq
+	int front, count;
+	int a[32];
+} tiny_queue_t;
 
-        if (++l >= k) { // get a kmer
-            key &= mask; buf[buf_pos].x = inv_hash32(key); buf[buf_pos].y = (uint32_t)pos;
-            _set_minimizer(minimizer, buf, buf_pos, min_buf_pos, equal_min_pos, equal_n);
-            ++buf_pos;
-            if (l == w-s+k-1) { // get w-s kmers
-                ++pos;
-                break;
+static inline void tq_push(tiny_queue_t *q, int x)
+{
+	q->a[((q->count++) + q->front) & 0x1f] = x;
+}
+
+static inline int tq_shift(tiny_queue_t *q)
+{
+	int x;
+	if (q->count == 0) return -1;
+	x = q->a[q->front++];
+	q->front &= 0x1f;
+	--q->count;
+	return x;
+}
+
+// para:
+// bseq:    seq integer
+// seq_len: seq length
+// k:       kmer length
+// w:       window size (s>=w, non-overlap window)
+// use_hpc: use homopolymer-compressed kmer
+// h:       kmer-key | rightmost-pos
+int minimizer_hash(uint8_t *bseq, int seq_len, int k, int w, int use_hpc, hash_t *h) {
+	int i, j, l, c, hi=0, kmer_span=0, buf_pos, min_pos;
+    uint32_t key=0, mask = (1ULL << 2*k) - 1;
+    u64_t buf[256], min = {UINT32_MAX, UINT32_MAX};
+    tiny_queue_t tq; memset(&tq, 0, sizeof(tiny_queue_t));
+
+    for (i = l = buf_pos = min_pos = 0; i < seq_len; ++i) {
+        c = bseq[i];
+        u64_t info = {UINT32_MAX, UINT32_MAX};
+        if (c < 4 ) {
+            if (use_hpc) {
+                int skip_len = 1;
+                if (i + 1 < seq_len && bseq[i+1] == c) {
+                    for (skip_len = 2; i + skip_len < seq_len; ++skip_len)
+                        if (bseq[i+skip_len] != c) break;
+                    i += skip_len - 1;
+                }
+                tq_push(&tq, skip_len);
+                kmer_span += skip_len;
+                if (tq.count > k) kmer_span -= tq_shift(&tq);
+            } else kmer_span = l+1 < k ? l+1 : k;
+            key = (key << 2 | c) & mask;
+            ++l;
+            if (l >= k && kmer_span < 256) {
+                info.x = key; info.y = i;
             }
-        }
-    }
-    // with a minimizer(,equal_min_pos, equal_n) in first w-s, calculate general minimizer with additional s
-    // [w-s ~ w], [w ~ w+s], [w+s ~ w+2s] ...
-    for (l = 0; pos < seq_len; ++pos) {
-        c = bseq[pos];
-        if (use_hpc) while (pos + 1 < seq_len && bseq[pos+1] == c) ++pos;
-        key = (key << 2 | c) & mask; tmp.x = inv_hash32(key); tmp.y = (uint32_t)pos; buf[buf_pos] = tmp;
+        } else l = 0, tq.count = tq.front = 0, kmer_span = 0, key = 0;
+        buf[buf_pos] = info;
 
-        if (tmp.x < minimizer.x) { // new minimizer
-            if (min_buf_pos == last_min_buf_pos) {// store last old minimizer
-                h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-            } minimizer = tmp; min_buf_pos = buf_pos; equal_n = 0;
-        } else if (tmp.x == minimizer.x) {
-            equal_min_pos[equal_n++] = pos; min_buf_pos = buf_pos;
+        if (l == w+k-1 && min.x != UINT32_MAX) {
+            for (j = buf_pos+1; j < w; ++j)
+                if (min.x == buf[j].x && buf[j].y != min.y) h[hi++] = ((hash_t)buf[j].x << 32) | buf[j].y; 
+            for (j = 0; j < buf_pos; ++j)
+                if (min.x == buf[j].x && buf[j].y != min.y) h[hi++] = ((hash_t)buf[j].x << 32) | buf[j].y; 
         }
-        if (++l == s) { // reach a new w
-            // collect minimizer of w-s for next w
-            if ((min_buf_pos <= buf_pos && min_buf_pos > buf_pos - w + s) || min_buf_pos > buf_pos + s) { // current minimizer is in next w
-                if (equal_n > 0) {
-                    h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-                    for (i = 0; i < equal_n-1; ++i) {
-                        h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
-                    }
-                    minimizer.y = equal_min_pos[equal_n-1]; equal_n = 0;
-                }
-                last_min_buf_pos = min_buf_pos;
-            } else { // out of next w
-                h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-                for (i = 0; i < equal_n; ++i) {
-                    h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
-                }
 
-                int new_start = buf_pos + s + 1;
-                if (new_start < w) {
-                    minimizer = buf[new_start]; min_buf_pos = new_start; equal_n = 0;
-                    for (i = new_start+1; i < w; ++i) {
-                        _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n);
-                    }
-                    for (i = 0; i <= buf_pos; ++i) {
-                        _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n);
-                    }
-                } else {
-                    new_start -= w;
-                    minimizer = buf[new_start]; min_buf_pos = new_start; equal_n = 0;
-                    for (i = new_start+1; i <= buf_pos; ++i) {
-                        _set_minimizer(minimizer, buf, i, min_buf_pos, equal_min_pos, equal_n);
-                    }
-                }
-                last_min_buf_pos = -1;
+        if (info.x <= min.x) {
+            if (l >= w+k && min.x != UINT32_MAX) h[hi++] = ((hash_t)min.x << 32) | min.y;
+            min = info, min_pos = buf_pos;
+        } else if (buf_pos == min_pos) {
+            if (l >= w+k-1 && min.x != UINT32_MAX)  h[hi++] = ((hash_t)min.x << 32) | min.y;
+            for (j = buf_pos+1, min.x = UINT32_MAX; j < w; ++j)
+                if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+            for (j = 0; j <= buf_pos; ++j)
+                if (min.x >= buf[j].x) min = buf[j], min_pos = j;
+            if (l >= w+k-1 && min.x != UINT32_MAX) {
+                for (j = buf_pos+1; j < w; ++j)
+                    if (min.x == buf[j].x && min.y != buf[j].y) h[hi++] = ((hash_t)buf[j].x << 32) | buf[j].y; 
+                for (j = 0; j <= buf_pos; ++j) 
+                    if (min.x == buf[j].x && min.y != buf[j].y) h[hi++] = ((hash_t)buf[j].x << 32) | buf[j].y; 
             }
-            l = 0;
         }
         if (++buf_pos == w) buf_pos = 0;
     }
-
-    h[hi++] = ((hash_t)minimizer.x << 32) | minimizer.y;
-    for (i = 0; i < equal_n; ++i) { 
-        h[hi++] = ((hash_t)minimizer.x << 32) | equal_min_pos[i];
-    }
-
+    if (min.x != UINT32_MAX) h[hi++] = ((hash_t)min.x << 32) | min.y;
 #ifdef __DEBUG__
-    //for (c = 0; c < hi; ++c) printf("%u: %u\n", (uint32_t)h[c], (uint32_t)(h[c]>>32));
+    for (i = 0; i < hi; ++i) printf("%u: %u\n", (uint32_t)h[i], (uint32_t)(h[i]>>32));
 #endif
-    free(equal_min_pos);
     return hi;
+
 }
 
-// TODO non overlap, m minmimal kmers
-// m:       collect m minimal kmers (m<w, m==1 for minimizer_hash)
-/*int min_hash(uint8_t *bseq, int seq_len, int k, int s, int w, int m, int use_hpc, hash_t *h) {
-    return 0;
-}*/
-
-// TODO skip N(ambiguous base)
 // h: kmer-key | rightmost-pos
 int build_kmer_hash(uint8_t *bseq, int seq_len, mini_tandem_para *mtp, hash_t *h) {
     if (mtp->w > 1) { // do min hash
-        if (mtp->s >= mtp->w) return non_overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
-        else return overlap_minimizer_hash(bseq, seq_len, mtp->k, mtp->s, mtp->w, mtp->hpc, h);
+        return minimizer_hash(bseq, seq_len, mtp->k, mtp->w, mtp->hpc, h);
     } else { // do direct hash
-        return direct_hash(bseq, seq_len, mtp->k, mtp->s, mtp->hpc, h);
+        return direct_hash(bseq, seq_len, mtp->k, mtp->hpc, h);
     }
     return 0;
 }

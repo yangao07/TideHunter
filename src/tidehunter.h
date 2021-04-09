@@ -42,7 +42,7 @@ extern "C" {
 #endif
 
 typedef struct {
-    int64_t k, w, s; int hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
+    int64_t k, w; int hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
     int min_copy; double max_div, div_exp; // max allowed divergence
     int64_t min_p, max_p; // min/max period size
     int64_t max_range; // max range to find tandem repeat, -1 for no limit

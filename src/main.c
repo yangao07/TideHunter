@@ -10,13 +10,12 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.4.3";
-const char CONTACT[30] = "yangao07@hit.edu.cn";
+const char VERSION[20] = "1.4.4";
+const char CONTACT[30] = "gaoy286@mail.sysu.edu.cn";
 
 const struct option mini_tandem_opt [] = {
 	{ "kmer-length", 1, NULL, 'k' },
 	{ "window-size", 1, NULL, 'w' },
-	{ "step-size", 1, NULL, 's' },
 	{ "HPC-kmer", 0, NULL, 'H' },
 
 	{ "min-copy", 1, NULL, 'c' },
@@ -77,8 +76,8 @@ static int usage(void)
 	err_printf("Options: \n");
 	err_printf("  Seeding:\n");
 	err_printf("    -k --kmer-length INT    k-mer length (no larger than %d) [%d]\n", MAX_KMER_SIZE, KMER_SIZE);
-	err_printf("    -w --window-size INT    window size [%d]\n", KMER_WSIZE);
-	err_printf("    -s --step-size   INT    step size [%d]\n", KMER_SSIZE);
+	err_printf("    -w --window-size INT    window size, set as >1 to enable minimizer seeding [%d]\n", KMER_WSIZE);
+	// err_printf("    -s --step-size   INT    step size [%d]\n", KMER_SSIZE);
 	err_printf("    -H --HPC-kmer           use homopolymer-compressed k-mer [False]\n");
 
 	//err_printf("\n");
@@ -224,13 +223,13 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
                     }
                 }
             } else {
-                if (mtp->out_fmt == FASTA_FMT) { // >readName_repN readLen_start_end_consLen_copyNum_aveMatchRatio_fullLength_subPos
-                    fprintf(mtp->cons_out, ">%s_rep%d %d_%d_%d_%d_%.1f_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                if (mtp->out_fmt == FASTA_FMT) { // >readName_repN_copyNum readLen_start_end_consLen_aveMatchRatio_fullLength_subPos
+                    fprintf(mtp->cons_out, ">%s_rep%d_%.1f %d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, _tseq->copy_num[cons_i], (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
                     fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
                 } else if (mtp->out_fmt == TAB_FMT) { // readName/repN/readLen/start/end/consLen/copyNum/aveMatchRatio/fullLength
-                    fprintf(mtp->cons_out, "%s\trep%d\t%d\t%d\t%d\t%d\t%.1f\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->copy_num[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                    fprintf(mtp->cons_out, "%s\trep%d\t%.1f\t%d\t%d\t%d\t%d\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, _tseq->copy_num[cons_i], (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
                     fprintf(mtp->cons_out, ",%d\t", _tseq->sub_pos[cons_i][i]+1);
@@ -315,7 +314,7 @@ mini_tandem_para *mini_tandem_init_para(void) {
 	mtp->three_fn = NULL; mtp->three_seq = NULL; mtp->three_rc_seq = NULL; mtp->three_len = 0;
 	mtp->k = KMER_SIZE;
 	mtp->w = KMER_WSIZE;
-	mtp->s = KMER_SSIZE;
+	// mtp->s = KMER_SSIZE;
 	mtp->hpc = 0;
 	mtp->min_copy = MIN_COPY;
 	mtp->max_div = MAX_DIV;
@@ -418,7 +417,7 @@ int main(int argc, char *argv[])
 	mini_tandem_para *mtp = mini_tandem_init_para();
 	int c, op_idx=0; char *s;
 	double realtime0 = realtime();
-	while ((c = getopt_long(argc, argv, "k:w:m:s:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ulFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
+	while ((c = getopt_long(argc, argv, "k:w:m:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ulFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
             case 'h': return usage();
@@ -431,7 +430,7 @@ int main(int argc, char *argv[])
 				      }
 				      break;
 			case 'w': mtp->w = atoi(optarg); break;
-			case 's': mtp->s = atoi(optarg); break;
+			// case 's': mtp->s = atoi(optarg); break;
 			case 'H': mtp->hpc = 1; break;
 
 			case 'c': mtp->min_copy = atoi(optarg); break;
