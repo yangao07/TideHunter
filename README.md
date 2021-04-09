@@ -11,7 +11,7 @@
 -->
 
 ## Updates (v1.4.4)
-* Update to the latest abPOA
+* Skip N bases in the input sequences
 
 
 ## Getting started
