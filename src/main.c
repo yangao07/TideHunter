@@ -37,6 +37,7 @@ const struct option mini_tandem_opt [] = {
 
 	{ "output", 1, NULL, 'o' },
 	{ "min-len", 1, NULL, 'm' },
+    { "min-cov", 1, NULL, 'r' },
     { "unit-seq", 0, NULL, 'u' },
 	{ "longest", 0, NULL, 'l' },
 	{ "full-len", 0, NULL, 'F' },
@@ -98,10 +99,10 @@ static int usage(void)
     err_printf("    -X --mismatch INT       mismatch penalty [%d]\n", MISMATCH);
     err_printf("    -O --gap-open INT(,INT) gap opening penalty (O1,O2) [%d,%d]\n", GAP_OPEN1, GAP_OPEN2);
     err_printf("    -E --gap-ext  INT(,INT) gap extension penalty (E1,E2) [%d,%d]\n", GAP_EXT1, GAP_EXT2);
-    err_printf("                            %s provides three gap penalty modes, cost of a g-long gap:\n", PROG);
-    err_printf("                            - convex (default): min{O1+g*E1, O2+g*E2}\n");
-    err_printf("                            - affine (set O2 as 0): O1+g*E1\n");
-    err_printf("                            - linear (set O1 as 0): g*E1\n");
+    err_printf("                            %s provides three gap penalty modes, cost of a \e[4mg\e[0m-long gap:\n", PROG);
+    err_printf("                            - convex (default): min{\e[4mO1\e[0m+\e[4mg\e[0m*\e[4mE1\e[0m, \e[4mO2\e[0m+\e[4mg\e[0m*\e[4mE2\e[0m}\n");
+    err_printf("                            - affine (set \e[4mO2\e[0m as 0): \e[4mO1\e[0m+\e[4mg\e[0m*\e[4mE1\e[0m\n");
+    err_printf("                            - linear (set \e[4mO1\e[0m as 0): \e[4mg\e[0m*\e[4mE1\e[0m\n");
 	err_printf("  Adapter sequence:\n");
 	err_printf("    -5 --five-prime  STR    5' adapter sequence (sense strand) [NULL]\n");
 	err_printf("    -3 --three-prime STR    3' adapter sequence (anti-sense strand) [NULL]\n");
@@ -111,13 +112,18 @@ static int usage(void)
 
 	err_printf("  Output:\n");
 	err_printf("    -o --output      STR    output file [stdout]\n");
-	err_printf("    -m --min-len     [INT]  only output consensus sequence with min. length of [%d]\n", DEF_MIN_LEN);
+	err_printf("    -m --min-len     INT    only output consensus sequence with min. length of [%d]\n", DEF_MIN_LEN);
+    err_printf("    -r --min-cov  FLOAT|INT only output consensus sequence with at least \e[4mR\e[0m supporting units for all bases: [%.2f]\n", DEF_MIN_COV);
+    err_printf("                            if \e[4mr\e[0m is fraction: \e[4mR\e[0m = \e[4mr\e[0m * copy number\n");
+    err_printf("                            if \e[4mr\e[0m is integer: \e[4mR\e[0m = \e[4mr\e[0m\n");
     err_printf("    -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]\n");
 	err_printf("    -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]\n");
 	err_printf("    -F --full-len           only output full-length consensus sequence [False]\n");
 	err_printf("    -f --out-fmt     INT    output format [%d]\n", FASTA_FMT);
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
 	err_printf("                            - %d: Tabular\n", TAB_FMT);
+	err_printf("                            - %d: FASTQ\n", FASTQ_FMT);
+    err_printf("                              qualiy score of each base represents the ratio of the consensus coverage to the # total copies.\n");
 	//err_printf("    -S --splint-seq  STR    splint sequence in FASTA/FASTQ format [NULL]\n");
 	//err_printf("    -d --detail-out  STR    detailed information of each consensus [NULL]\n");
 	//err_printf("                              (start, end, score, etc.)\n");
@@ -129,8 +135,7 @@ static int usage(void)
 
     err_printf("  General options:\n");
     err_printf("    -h --help               print this help usage information\n");
-    err_printf("    -v --version            show version number\n");
-
+    err_printf("    -v --version            show version number\n"); 
 	err_printf("\n");
 	return 1;
 }
@@ -189,7 +194,7 @@ void aux_free(thread_aux_t *aux, mini_tandem_para *mtp) {
     int i;
     for (i = 0; i < mtp->n_thread; ++i) {
         // free ab
-        abpoa_free(aux[i].ab, aux->abpt);
+        abpoa_free(aux[i].ab);
     }
     abpoa_free_para(aux->abpt); free(aux);
 }
@@ -233,12 +238,26 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
                     fprintf(mtp->cons_out, ",%d\t", _tseq->sub_pos[cons_i][i]+1);
+                } else if (mtp->out_fmt == FASTQ_FMT) {
+                    fprintf(mtp->cons_out, "@%s_rep%d_%.1f %d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, _tseq->copy_num[cons_i], (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                    fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
+                    for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                    fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
                 }
                 cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
                 for (i = cons_seq_start; i < cons_seq_end; ++i)  
                     fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
-                cons_seq_start += _tseq->cons_len[cons_i];
                 fprintf(mtp->cons_out, "\n");
+                if (mtp->out_fmt == FASTQ_FMT) {
+                    fprintf(mtp->cons_out, "+%s_rep%d_%.1f %d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, _tseq->copy_num[cons_i], (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
+                    fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
+                    for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
+                    fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
+                    for (i = cons_seq_start; i < cons_seq_end; ++i)
+                        fprintf(mtp->cons_out, "%c", _tseq->cons_seq->qual.s[i]);
+                    fprintf(mtp->cons_out, "\n");
+                }
+                cons_seq_start += _tseq->cons_len[cons_i];
             }
 		}
 		_tseq->cons_n = 0;
@@ -321,6 +340,7 @@ mini_tandem_para *mini_tandem_init_para(void) {
 	mtp->div_exp = get_div_exp(KMER_SIZE, MAX_DIV);
 	mtp->min_p = DEF_MIN_PERIOD;
 	mtp->max_p = DEF_MAX_PERIOD;
+    mtp->min_cov = 0; mtp->min_frac = 0.0;
 
     mtp->match = MATCH, mtp->mismatch = MISMATCH;
     mtp->gap_open1 = GAP_OPEN1, mtp->gap_open2 = GAP_OPEN2;
@@ -415,9 +435,9 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 int main(int argc, char *argv[])
 {
 	mini_tandem_para *mtp = mini_tandem_init_para();
-	int c, op_idx=0; char *s;
-	double realtime0 = realtime();
-	while ((c = getopt_long(argc, argv, "k:w:m:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ulFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
+	int c, op_idx=0; char *s; double x, realtime0 = realtime();
+
+	while ((c = getopt_long(argc, argv, "k:w:m:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ur:qlFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
             case 'h': return usage();
@@ -461,11 +481,15 @@ int main(int argc, char *argv[])
 
 			case 'o': mtp->cons_out = xopen(optarg, "w"); break;
 			case 'm': mtp->min_len = atoi(optarg); break;
+            case 'r': x = strtod(optarg, &s);
+                      if (x < 1.0) mtp->min_frac = x, mtp->min_cov = 0;
+                      else mtp->min_cov = (int)(x + .499), mtp->min_frac = 0.0;
+                      break;
             case 'u': mtp->only_unit = 1; break;
 			case 'l': mtp->only_longest = 1; break;
 			case 'F': mtp->only_full_length = 1; break;
 			case 'f': mtp->out_fmt = atoi(optarg); 
-					  if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT) {
+					  if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT && mtp->out_fmt != FASTQ_FMT) {
 						  err_printf("\n[main] Error: unknown format number. (-%c)\n", c);
 						  goto End;
 					  }

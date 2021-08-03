@@ -24,6 +24,7 @@ KSEQ_INIT(gzFile, gzread)
 #define DEF_MAX_PERIOD 10000 // UINT16_MAX
 #define DEF_MAX_PERIOD_STR "10K" // UINT16_MAX
 #define DEF_MIN_LEN 30
+#define DEF_MIN_COV 0.0
 
 #define MATCH 2
 #define MISMATCH 4
@@ -34,6 +35,7 @@ KSEQ_INIT(gzFile, gzread)
 
 #define FASTA_FMT 1
 #define TAB_FMT 2
+#define FASTQ_FMT 3
 
 #define ADA_MATCH_RAT 0.8
 
@@ -43,7 +45,7 @@ extern "C" {
 
 typedef struct {
     int64_t k, w; int hpc; // k-mer length, window size, selected minimum m hash values // keep all k-mer when w == m
-    int min_copy; double max_div, div_exp; // max allowed divergence
+    int min_copy, min_cov; double max_div, div_exp, min_frac; // max allowed divergence
     int64_t min_p, max_p; // min/max period size
     int64_t max_range; // max range to find tandem repeat, -1 for no limit
     // msa parameters for abPOA

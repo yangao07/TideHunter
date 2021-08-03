@@ -7,7 +7,7 @@
 #include "ksw2_align.h"
 #include "utils.h"
 
-void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int start, int end, double copy_num, double ave_match, mini_tandem_para *mtp, int8_t full_length, int *par_pos, int pos_n) {
+void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, uint8_t *cons_qual, int cons_len, int start, int end, double copy_num, double ave_match, mini_tandem_para *mtp, int8_t full_length, int *par_pos, int pos_n) {
     if (cons_len < mtp->min_len || cons_len > mtp->max_p) return;
     if (mtp->only_longest && tseq->cons_n == 1) {
         if (end-start > tseq->cons_end[0]-tseq->cons_start[0]) {
@@ -19,6 +19,16 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, int cons_len, int
         tseq->cons_seq->seq.s = (char*)_err_realloc(tseq->cons_seq->seq.s, tseq->cons_seq->seq.m * sizeof(char));
     }
     strcpy(tseq->cons_seq->seq.s + tseq->cons_seq->seq.l, cons_seq); tseq->cons_seq->seq.l += cons_len; 
+    if (cons_qual) {
+        if (tseq->cons_seq->qual.l + cons_len >= tseq->cons_seq->qual.m) {
+            tseq->cons_seq->qual.m = tseq->cons_seq->qual.l + cons_len + 1;
+            tseq->cons_seq->qual.s = (char*)_err_realloc(tseq->cons_seq->qual.s, tseq->cons_seq->qual.m * sizeof(char));
+        }
+        int i;
+        for (i = 0; i < cons_len; ++i)
+            tseq->cons_seq->qual.s[tseq->cons_seq->qual.l+i] = cons_qual[i];
+        tseq->cons_seq->qual.l += cons_len; 
+    }
 
     int i;
     if (tseq->cons_n == tseq->cons_m) {
@@ -75,7 +85,8 @@ void write_tandem_unit(tandem_seq_t *tseq, int *par_pos, int pos_n) {
 void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t *tseq, mini_tandem_para *mtp, abpoa_t *ab, abpoa_para_t *abpt) {
         int cons_len=0;
         char *cons_seq = (char*)_err_malloc(seq_len * sizeof(char));
-        uint8_t *cons_bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
+        uint8_t *cons_bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t)), *cons_qual = NULL;
+        if (mtp->out_fmt == FASTQ_FMT) cons_qual = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
 #ifdef __DEBUG__
         {
             int i, j, seq_i = 0, start, end; 
@@ -102,7 +113,10 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                 if (mtp->only_unit) {
                     write_tandem_unit(tseq, par_pos+i, j-i);
                 } else {
-                    cons_len = abpoa_gen_cons(ab, abpt, bseq, seq_len, par_pos+i, j-i, cons_bseq);
+                    int min_cov = 0;
+                    if (mtp->min_frac > 0.0) min_cov = (int)((j-i) * mtp->min_frac);
+                    else if (mtp->min_cov > 0) min_cov = mtp->min_cov;
+                    cons_len = abpoa_gen_cons(ab, abpt, bseq, seq_len, par_pos+i, j-i, cons_bseq, cons_qual, min_cov);
                     // invoke ksw2_global to calculate iden_n / unit_len 
                     double ave_match = 0; int start, end, len, iden_n;
                     for (k = i; k < j-1; ++k) {
@@ -123,8 +137,13 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                     // find full-length sequence based on 5' and 3' adapter sequences
                     int full_length = 0;
                     if (mtp->five_seq != NULL && mtp->three_seq != NULL && cons_len > mtp->five_len + mtp->three_len) {
-                        char *cons2 = (char*)_err_malloc(((cons_len << 1) + 1) * sizeof(char));
+                        char *cons2 = (char*)_err_malloc(((cons_len << 1) + 1) * sizeof(char)); uint8_t *qual2 = NULL;
                         strcpy(cons2, cons_seq); strcpy(cons2+cons_len, cons_seq); cons2[cons_len<<1] = '\0'; // concatenated 2 copies
+                        if (cons_qual) { 
+                            qual2 = (uint8_t*)_err_malloc((cons_len << 1) * sizeof(uint8_t));
+                            for (k = 0; k < cons_len; ++k) qual2[k] = cons_qual[k];
+                            for (k = 0; k < cons_len; ++k) qual2[cons_len+k] = cons_qual[k];
+                        }
                         int tar_start, tar_end, tot_ed, _5_ed, _3_ed, _5_start, _5_end, _3_start, _3_end;
                         tar_start = tar_end = -1;
                         // |---plus-5'adapter---|---target-sequence---|---minus-3'adapter---|
@@ -176,16 +195,20 @@ WRITE_CONS:
                         if (tar_start > 0 && tar_end > tar_start) {
                             memcpy(cons_seq, cons2 + tar_start , tar_end - tar_start + 1);
                             cons_seq[tar_end - tar_start + 1] = '\0';
+                            if (cons_qual) {
+                                for (k = tar_start; k <= tar_end; ++k) cons_qual[k-tar_start] = qual2[k];
+                            }
                             cons_len = tar_end - tar_start + 1;
                         }
-                        free(cons2);
+                        free(cons2); if (cons_qual) free(qual2);
                     }
                     // write cons_seq into tseq
                     if (!(mtp->only_full_length) || full_length > 0)
-                        write_tandem_cons_seq(tseq, cons_seq, cons_len, cons_start, cons_end, copy_num, ave_match/(j-i-1), mtp, full_length, par_pos+i, j-i);
+                        write_tandem_cons_seq(tseq, cons_seq, cons_qual, cons_len, cons_start, cons_end, copy_num, ave_match/(j-i-1), mtp, full_length, par_pos+i, j-i);
                 }
             }
             i = j + 1;
         }
         free(cons_seq); free(cons_bseq); free(par_pos);
+        if (cons_qual) free(cons_qual); 
 }

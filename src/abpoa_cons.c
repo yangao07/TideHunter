@@ -1,13 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 #include "tidehunter.h"
 #include "utils.h"
 #include "seq.h"
+#include "abpoa.h"
 
 abpoa_para_t *mt_abpoa_init_para(mini_tandem_para *mtp) {
     abpoa_para_t *abpt = abpoa_init_para();
-    abpt->m = 5;
+    // abpt->cons_agrm = 1; // 0: HB, 1: RC
     abpt->match = mtp->match;     // match score
     abpt->mismatch = mtp->mismatch;  // mismatch penalty
     abpt->gap_open1 = mtp->gap_open1; // first gap open penalty
@@ -23,7 +25,7 @@ abpoa_para_t *mt_abpoa_init_para(mini_tandem_para *mtp) {
     return abpt;
 }
 
-int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq) {
+int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq, uint8_t *cons_qual, int min_cov) {
     int i, seq_n, cons_len = 0;
 
     /* clean graph if it is re-used */
@@ -55,18 +57,37 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
         cons_len = seq_lens[0];
         for (i = 0; i < cons_len; ++i) cons_bseq[i] = _bseqs[0][i];
     } else {
-        uint8_t **_cons_bseq; int *_cons_l, _cons_n = 0;
-        abpoa_msa(ab, abpt, seq_n, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, NULL, &_cons_l, &_cons_n, NULL, NULL);
+        uint8_t **_cons_bseq; int **_cons_cov, *_cons_l, _cons_n = 0;
+        if (min_cov > 0 || cons_qual != NULL) abpoa_msa(ab, abpt, seq_n, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, &_cons_cov, &_cons_l, &_cons_n, NULL, NULL);
+        else abpoa_msa(ab, abpt, seq_n, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, NULL, &_cons_l, &_cons_n, NULL, NULL);
         if (_cons_n == 1) {
-            for (i = 0; i < _cons_l[0]; ++i) cons_bseq[i] = _cons_bseq[0][i];
             cons_len = _cons_l[0];
-
+            int skip = 0;
+            if (min_cov > 0 || cons_qual != NULL) {
+                if (min_cov > 0) {
+                    for (i = 0; i < cons_len; ++i) {
+                        if (_cons_cov[0][i] < min_cov) {
+                            skip = 1; break;
+                        }
+                    }
+                }
+                if (cons_qual != NULL) {
+                    int phred;
+                    for (i = 0; i < cons_len; ++i) {
+                        if (_cons_cov[0][i] == seq_n) phred = 73;
+                        else phred = 33 + (int)(-10 * log10((seq_n-_cons_cov[0][i]+0.0) / seq_n));
+                        cons_qual[i] = phred;
+                    }
+                }
+                free(_cons_cov[0]); free(_cons_cov);
+            }
+            if (skip == 0) {
+                for (i = 0; i < cons_len; ++i) cons_bseq[i] = _cons_bseq[0][i];
+            } else cons_len = 0;
             free(_cons_l); free(_cons_bseq[0]); free(_cons_bseq);
         }
     }
-    // abpoa_msa(ab, abpt, seq_n, NULL, seq_lens, _bseqs, stderr, NULL, NULL, NULL, NULL, NULL, NULL);
 
     free(seq_lens); free(_bseqs);
-    // abpoa_free(ab, abpt); abpoa_free_para(abpt); 
     return cons_len;
 }
