@@ -10,15 +10,15 @@
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
 
-## Updates (v1.4.4)
-* Skip N bases in the input sequences
+## Updates (v1.5.0)
+* Output fastq format
 
 
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.4/TideHunter-v1.4.4.tar.gz
-tar -zxvf TideHunter-v1.4.4.tar.gz && cd TideHunter-v1.4.4
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.0/TideHunter-v1.5.0.tar.gz
+tar -zxvf TideHunter-v1.5.0.tar.gz && cd TideHunter-v1.5.0
 ```
 Make from source and run with test data:
 ```
@@ -38,8 +38,9 @@ TideHunter ./test_data/test_50x4.fa > cons.fa
   - [Pre-built binary executable file for Linux/Unix](#binary)
 - [Getting started with toy example in `test_data`](#start)
 - [Usage](#usage)
-  - [To generate consensus sequencesin FASTA format](#fasta_cons)
-  - [To generate consensus sequencesin tabular format](#tab_cons)
+  - [To generate consensus sequences in FASTA format](#fasta_cons)
+  - [To generate consensus sequences in tabular format](#tab_cons)
+  - [To generate consensus sequences in FASTQ format](#fq_cons)
   - [To generate full-length consensus sequences](#full_cons)
   - [To generate unit sequences in FASTA format](#fasta_unit)
   - [To generate unit sequences in tabular format](#tab_unit)
@@ -49,6 +50,7 @@ TideHunter ./test_data/test_50x4.fa > cons.fa
 - [Output](#output)
   - [Tabular format](#tabular)
   - [FASTA format](#fasta)
+  - [FASTQ format](#fastq)
   - [Unit sequences](#unit)
 - [Contact](#contact)
 
@@ -76,9 +78,9 @@ Make sure you have gcc (>=6.4.0) and zlib installed before compiling.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.4/TideHunter-v1.4.4.tar.gz
-tar -zxvf TideHunter-v1.4.4.tar.gz
-cd TideHunter-v1.4.4; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.0/TideHunter-v1.5.0.tar.gz
+tar -zxvf TideHunter-v1.5.0.tar.gz
+cd TideHunter-v1.5.0; make
 ```
 Or, you can use `git clone` command to download the source code. 
 Don't forget to include the `--recursive` to download the codes of [abPOA](https://github.com/yangao07/abPOA).
@@ -91,8 +93,8 @@ cd TideHunter; make
 ### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.4.4/TideHunter-v1.4.4_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.4.4_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.0/TideHunter-v1.5.0_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.5.0_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
@@ -108,6 +110,10 @@ TideHunter ./test_data/test_1000x10.fa > cons.fa
 #### <a name="tab_cons"></a>To generate consensus sequences in tabular format
 ```
 TideHunter -f 2 ./test_data/test_1000x10.fa > cons.out
+```
+#### <a name="fq_cons"></a>To generate consensus sequences in FASTQ format
+```
+TideHunter -f 3 ./test_data/test_1000x10.fa > cons.fq
 ```
 #### <a name="full_cons"></a>To generate full-length consensus sequences
 ```
@@ -150,13 +156,18 @@ Options:
     -a --ada-mat-rat FLT    minimum match ratio of adapter sequence [0.80]
   Output:
     -o --output      STR    output file [stdout]
-    -m --min-len     [INT]  only output consensus sequence with min. length of [30]
+    -m --min-len     INT    only output consensus sequence with min. length of [30]
+    -r --min-cov  FLOAT|INT only output consensus sequence with at least R supporting units for all bases: [0.00]
+                            if r is fraction: R = r * total copy number
+                            if r is integer: R = r
     -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]
     -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]
     -F --full-len           only output full-length consensus sequence [False]
     -f --out-fmt     INT    output format [1]
                             - 1: FASTA
                             - 2: Tabular
+                            - 3: FASTQ
+                              qualiy score of each base represents the ratio of the consensus coverage to the # total copies.
   Computing resource:
     -t --thread      INT    number of threads to use [4]
 
@@ -201,7 +212,7 @@ For example, here are the output for a non-full-length consensus sequence genera
 test_50x4 rep0  4.0 300 51  250 50  100.0 0 59,109,159,208  CGATCGATCGGCATGCATGCATGCTAGTCGATGCATCGGGATCAGCTAGT
 ```
 <!-- ![example](example_50x4.png) -->
-<img src="example_50x4.png" width="800">
+<img src="img/example_50x4.png" width="800">
 
 In this example, TideHunter identifies three consecutive tandem repeat units, [59,108], [109,158], [159,208], from the raw read which is 300 bp long.
 A consensus sequence with 50 bp is generated from the three repeat units. TideHunter further extends the tandem repeat boundary to [51, 250] by aligning the consensus sequence back to the raw read on both sides of the three repeat units.
@@ -221,6 +232,38 @@ The read name and comment of each consensus sequence have the following format:
 ```
 >readName_repN_copyNum readLen_start_end_consLen_aveMatch_fullLen_subPos
 ```
+
+### <a name="fastq"></a>FASTQ format
+For FASTQ output format, the read name and comment are the same as described in [FASTA format](#fasta).
+TideHunter calculated a customized Phred score as the base quality score of each consensus base:
+
+<p align="center">
+  <img src="img/phred.svg"/>
+  <!-- <img src="https://latex.codecogs.com/svg.image?Q_{phred}=-10 \cdot log_{10}(p)"/> -->
+<!-- <img src="https://render.githubusercontent.com/render/math?math=Q_{phred}=-10 \cdot log_{10}(p)"> -->
+</p>
+
+Here, <img src="https://latex.codecogs.com/svg.image?p"/> is the Sigmoid-smoothed consensus calling error rate for each base:
+
+<p align="center">
+  <img src="img/p.svg"/>
+  <!-- <img src="https://render.githubusercontent.com/render/math?math=p=1-S(N_{cons} / N_{total} \cdot 21)">, -->
+  <!-- <img src="https://latex.codecogs.com/svg.image?p=1-S(13.8 \cdot (1.25 \cdot N_{cons} / N_{total} - 0.25))"/> -->
+</p>
+
+<img src="https://latex.codecogs.com/svg.image?S"/> is the Sigmoid function:
+<p align="center">
+  <img src="img/sigmoid.svg"/>
+  <!-- <img src="https://latex.codecogs.com/svg.image?S(x)=\frac{1}{1+e^{-x}}"/> -->
+</p>
+
+<img src="https://latex.codecogs.com/svg.image?N_{cons}"/> is the coverage of the consensus base and
+<img src="https://latex.codecogs.com/svg.image?N_{total}"/> is the number of total copies. 
+For example, if one base of the consensus sequence has 4 supporting copies and the total copy number is 5,
+<img src="https://latex.codecogs.com/svg.image?N_{cons}"/> is 4 and <img src="https://latex.codecogs.com/svg.image?N_{total}"/> is 5.
+
+The Phred quality score was then shifted by 33 and converted to characters based on the ASCII value.
+The quality scores range from 0 to 60 and the corresponding ASCII values range from 33 to 93.
 
 ### <a name="unit"></a>Unit sequences
 TideHunter can output the unit sequences without performing the consensus calling step when option `-u/--unit-seq` is enabled. Then, only the following information will be output for the tabular format:

@@ -10,7 +10,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.4.4";
+const char VERSION[20] = "1.5.0";
 const char CONTACT[30] = "gaoy286@mail.sysu.edu.cn";
 
 const struct option mini_tandem_opt [] = {
@@ -114,7 +114,7 @@ static int usage(void)
 	err_printf("    -o --output      STR    output file [stdout]\n");
 	err_printf("    -m --min-len     INT    only output consensus sequence with min. length of [%d]\n", DEF_MIN_LEN);
     err_printf("    -r --min-cov  FLOAT|INT only output consensus sequence with at least \e[4mR\e[0m supporting units for all bases: [%.2f]\n", DEF_MIN_COV);
-    err_printf("                            if \e[4mr\e[0m is fraction: \e[4mR\e[0m = \e[4mr\e[0m * copy number\n");
+    err_printf("                            if \e[4mr\e[0m is fraction: \e[4mR\e[0m = \e[4mr\e[0m * total copy number\n");
     err_printf("                            if \e[4mr\e[0m is integer: \e[4mR\e[0m = \e[4mr\e[0m\n");
     err_printf("    -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]\n");
 	err_printf("    -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]\n");
@@ -431,7 +431,6 @@ int mini_tandem(const char *read_fn, mini_tandem_para *mtp)
 	return 0;
 }
 
-// TODO add score para 
 int main(int argc, char *argv[])
 {
 	mini_tandem_para *mtp = mini_tandem_init_para();
