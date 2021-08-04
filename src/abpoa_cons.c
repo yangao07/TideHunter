@@ -7,9 +7,11 @@
 #include "seq.h"
 #include "abpoa.h"
 
+#define NAT_E 2.718281828459045
+
 abpoa_para_t *mt_abpoa_init_para(mini_tandem_para *mtp) {
     abpoa_para_t *abpt = abpoa_init_para();
-    // abpt->cons_agrm = 1; // 0: HB, 1: RC
+    abpt->cons_agrm = 1; // 0: HB, 1: RC
     abpt->match = mtp->match;     // match score
     abpt->mismatch = mtp->mismatch;  // mismatch penalty
     abpt->gap_open1 = mtp->gap_open1; // first gap open penalty
@@ -26,7 +28,7 @@ abpoa_para_t *mt_abpoa_init_para(mini_tandem_para *mtp) {
 }
 
 int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq, uint8_t *cons_qual, int min_cov) {
-    int i, seq_n, cons_len = 0;
+    int i, n_seqs, cons_len = 0;
 
     /* clean graph if it is re-used */
     abpoa_reset_graph(ab, abpt, seq_len);
@@ -35,31 +37,28 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
     uint8_t **_bseqs = (uint8_t**)malloc(sizeof(uint8_t*) * (pos_n-1));
     /* main graph alignment */
     // |pos|-----|pos|-----pos|
-    for (i = seq_n = 0; i < pos_n-1; ++i) {
+    for (i = n_seqs = 0; i < pos_n-1; ++i) {
         int start = pos[i], end = pos[i+1];
         if (start < 0 || end < 0 || start >= seq_len || end+1 >= seq_len) continue;
         // fprintf(stdout, ">%d\n", start);
-        seq_lens[seq_n] = end - start;
-        _bseqs[seq_n] = bseqs + start + 1;
-        /*int j;
-        for (j = start; j < end; ++j)
-            fprintf(stdout, "%c", "ACGT"[bseqs[j+1]]);
-        fprintf(stdout, "\n");*/
-        ++seq_n;
+        seq_lens[n_seqs] = end - start;
+        _bseqs[n_seqs] = bseqs + start + 1;
+        /*int j; for (j = start; j < end; ++j) fprintf(stdout, "%c", "ACGT"[bseqs[j+1]]); fprintf(stdout, "\n");*/
+        ++n_seqs;
     }
 #ifdef __DEBUG__
     FILE *outfp = stderr;
 #else
     FILE *outfp = NULL;
 #endif
-    if (seq_n <= 2) {
-        if (seq_n == 0) err_fatal_simple("No enough sequences to perform msa.\n");
+    if (n_seqs <= 2) {
+        if (n_seqs == 0) err_fatal_simple("No enough sequences to perform msa.\n");
         cons_len = seq_lens[0];
         for (i = 0; i < cons_len; ++i) cons_bseq[i] = _bseqs[0][i];
     } else {
         uint8_t **_cons_bseq; int **_cons_cov, *_cons_l, _cons_n = 0;
-        if (min_cov > 0 || cons_qual != NULL) abpoa_msa(ab, abpt, seq_n, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, &_cons_cov, &_cons_l, &_cons_n, NULL, NULL);
-        else abpoa_msa(ab, abpt, seq_n, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, NULL, &_cons_l, &_cons_n, NULL, NULL);
+        if (min_cov > 0 || cons_qual != NULL) abpoa_msa(ab, abpt, n_seqs, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, &_cons_cov, &_cons_l, &_cons_n, NULL, NULL);
+        else abpoa_msa(ab, abpt, n_seqs, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, NULL, &_cons_l, &_cons_n, NULL, NULL);
         if (_cons_n == 1) {
             cons_len = _cons_l[0];
             int skip = 0;
@@ -72,10 +71,12 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
                     }
                 }
                 if (cons_qual != NULL) {
-                    int phred;
+                    int phred; double x, p;
                     for (i = 0; i < cons_len; ++i) {
-                        if (_cons_cov[0][i] == seq_n) phred = 73;
-                        else phred = 33 + (int)(-10 * log10((seq_n-_cons_cov[0][i]+0.0) / seq_n));
+                        // min: 0+33=33, max: 60+33=93
+                        x = 13.8 * (1.25 * _cons_cov[0][i] / n_seqs - 0.25);
+                        p = 1 - 1.0 / (1.0 + pow(NAT_E, -1 * x));
+                        phred = 33 + (int)(-10 * log10(p) + 0.499);
                         cons_qual[i] = phred;
                     }
                 }
