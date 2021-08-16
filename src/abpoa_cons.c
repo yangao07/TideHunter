@@ -32,6 +32,7 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
 
     /* clean graph if it is re-used */
     abpoa_reset_graph(ab, abpt, seq_len);
+    ab->abs->n_seq = 0;
 
     int *seq_lens = (int*)malloc(sizeof(int) * (pos_n-1));
     uint8_t **_bseqs = (uint8_t**)malloc(sizeof(uint8_t*) * (pos_n-1));
