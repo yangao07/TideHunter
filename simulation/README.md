@@ -1,5 +1,8 @@
 ## Simulation datasets used in [TideHunter paper](https://doi.org/10.1093/bioinformatics/btz376)
 
+### Update
+* To reduce repository size, the simulation datasets were archived in the [old commit](https://github.com/yangao07/TideHunter/tree/b5de6d99c49b44a59eeafea589daf7c9da1b3d45).
+
 15 simulation datasets were included in `simu.tar.gz`. 
 ```
 tar -zxvf simu.tar.gz
