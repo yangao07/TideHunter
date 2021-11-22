@@ -113,10 +113,9 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                 if (mtp->only_unit) {
                     write_tandem_unit(tseq, par_pos+i, j-i);
                 } else {
-                    int min_cov = 0;
-                    if (mtp->min_frac > 0.0) min_cov = (int)((j-i) * mtp->min_frac);
-                    else if (mtp->min_cov > 0) min_cov = mtp->min_cov;
-                    cons_len = abpoa_gen_cons(ab, abpt, bseq, seq_len, par_pos+i, j-i, cons_bseq, cons_qual, min_cov);
+                    int n_seqs;
+                    cons_len = abpoa_gen_cons(ab, abpt, bseq, seq_len, par_pos+i, j-i, cons_bseq, cons_qual, mtp, &n_seqs);
+                    if (cons_len == 0) continue;
                     // invoke ksw2_global to calculate iden_n / unit_len 
                     double ave_match = 0; int start, end, len, iden_n;
                     for (k = i; k < j-1; ++k) {
@@ -127,7 +126,7 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                     }
                     for (s = 0; s < cons_len; ++s) cons_seq[s] = "ACGTN"[cons_bseq[s]]; cons_seq[cons_len] = '\0';
 
-                    int max_q, max_t, cons_start, cons_end; double copy_num = j-i-1;
+                    int max_q, max_t, cons_start, cons_end; double copy_num = n_seqs;
                     ksw2_left_ext(cons_bseq, cons_len, bseq, par_pos[i]+1, &max_q, &max_t); cons_start = par_pos[i] - max_t;
                     // printf("max_q: %d, max_t: %d\n", max_q, max_t);
                     copy_num += (max_q + 1.0) / cons_len;

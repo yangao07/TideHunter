@@ -27,7 +27,7 @@ abpoa_para_t *mt_abpoa_init_para(mini_tandem_para *mtp) {
     return abpt;
 }
 
-int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq, uint8_t *cons_qual, int min_cov) {
+int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len, int *pos, int pos_n, uint8_t *cons_bseq, uint8_t *cons_qual, mini_tandem_para *mtp, int *_n_seqs) {
     int i, n_seqs, cons_len = 0;
 
     /* clean graph if it is re-used */
@@ -52,10 +52,35 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
 #else
     FILE *outfp = NULL;
 #endif
+
+    *_n_seqs = n_seqs;
+    int min_cov = 0, _min_cov;
+    if (mtp->min_frac > 0.0) min_cov = (int)(n_seqs * mtp->min_frac);
+    else if (mtp->min_cov > 0) min_cov = mtp->min_cov;
     if (n_seqs <= 2) {
-        if (n_seqs == 0) err_fatal_simple("No enough sequences to perform msa.\n");
+        if (n_seqs <= 1) err_fatal_simple("No enough sequences to perform msa.\n");
         cons_len = seq_lens[0];
-        for (i = 0; i < cons_len; ++i) cons_bseq[i] = _bseqs[0][i];
+
+        int skip = 0;
+        if (min_cov > 0) {
+            if (seq_lens[0] != seq_lens[1]) _min_cov = 1;
+            else {
+                _min_cov = 2;
+                for (i = 0; i < cons_len; ++i) {
+                    if (_bseqs[0][i] != _bseqs[1][i]) {
+                        _min_cov = 1;
+                        break;
+                    }
+                }
+            }
+            if (_min_cov < min_cov) skip = 1;
+        }
+        if (skip == 0) {
+            for (i = 0; i < cons_len; ++i) {
+                cons_bseq[i] = _bseqs[0][i];
+                if (cons_qual != NULL) cons_qual[i] = 33;
+            }
+        } else cons_len = 0;
     } else {
         uint8_t **_cons_bseq; int **_cons_cov, *_cons_l, _cons_n = 0;
         if (min_cov > 0 || cons_qual != NULL) abpoa_msa(ab, abpt, n_seqs, NULL, seq_lens, _bseqs, outfp, &_cons_bseq, &_cons_cov, &_cons_l, &_cons_n, NULL, NULL);
