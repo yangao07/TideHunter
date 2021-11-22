@@ -249,10 +249,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
                     fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
                 fprintf(mtp->cons_out, "\n");
                 if (mtp->out_fmt == FASTQ_FMT) {
-                    fprintf(mtp->cons_out, "+%s_rep%d_%.1f %d_%d_%d_%d_%.1f_%d_", (read_seq+seq_i)->name.s, cons_i, _tseq->copy_num[cons_i], (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
-                    fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
-                    for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
-                    fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
+                    fprintf(mtp->cons_out, "+\n");
                     for (i = cons_seq_start; i < cons_seq_end; ++i)
                         fprintf(mtp->cons_out, "%c", _tseq->cons_seq->qual.s[i]);
                     fprintf(mtp->cons_out, "\n");
