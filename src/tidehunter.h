@@ -36,6 +36,7 @@ KSEQ_INIT(gzFile, gzread)
 #define FASTA_FMT 1
 #define TAB_FMT 2
 #define FASTQ_FMT 3
+#define TAB_QUAL_FMT 4
 
 #define ADA_MATCH_RAT 0.8
 

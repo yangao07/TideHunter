@@ -86,7 +86,7 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
         int cons_len=0;
         char *cons_seq = (char*)_err_malloc(seq_len * sizeof(char));
         uint8_t *cons_bseq = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t)), *cons_qual = NULL;
-        if (mtp->out_fmt == FASTQ_FMT) cons_qual = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
+        if (mtp->out_fmt == FASTQ_FMT || mtp->out_fmt == TAB_QUAL_FMT) cons_qual = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
 #ifdef __DEBUG__
         {
             int i, j, seq_i = 0, start, end; 

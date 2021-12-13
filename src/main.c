@@ -123,7 +123,9 @@ static int usage(void)
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
 	err_printf("                            - %d: Tabular\n", TAB_FMT);
 	err_printf("                            - %d: FASTQ\n", FASTQ_FMT);
-    err_printf("                              qualiy score of each base represents the ratio of the consensus coverage to the # total copies.\n");
+	err_printf("                            - %d: Tabular with quality score\n", TAB_QUAL_FMT);
+
+    err_printf("                              for [3] and [4], qualiy score of each base represents the ratio of the consensus coverage to the # total copies.\n");
 	//err_printf("    -S --splint-seq  STR    splint sequence in FASTA/FASTQ format [NULL]\n");
 	//err_printf("    -d --detail-out  STR    detailed information of each consensus [NULL]\n");
 	//err_printf("                              (start, end, score, etc.)\n");
@@ -233,7 +235,7 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
                     fprintf(mtp->cons_out, ",%d\n", _tseq->sub_pos[cons_i][i]+1);
-                } else if (mtp->out_fmt == TAB_FMT) { // readName/repN/readLen/start/end/consLen/copyNum/aveMatchRatio/fullLength
+                } else if (mtp->out_fmt == TAB_FMT || mtp->out_fmt == TAB_QUAL_FMT) { // readName/repN/readLen/start/end/consLen/copyNum/aveMatchRatio/fullLength
                     fprintf(mtp->cons_out, "%s\trep%d\t%.1f\t%d\t%d\t%d\t%d\t%.1f\t%d\t", (read_seq+seq_i)->name.s, cons_i, _tseq->copy_num[cons_i], (int)((read_seq+seq_i)->seq.l),  _tseq->cons_start[cons_i]+1, _tseq->cons_end[cons_i]+1, _tseq->cons_len[cons_i], _tseq->ave_match[cons_i], _tseq->full_length[cons_i]);
                     fprintf(mtp->cons_out, "%d", _tseq->sub_pos[cons_i][0]+2);
                     for (i = 1; i < _tseq->pos_n[cons_i]-1; ++i) fprintf(mtp->cons_out, ",%d", _tseq->sub_pos[cons_i][i]+2);
@@ -247,13 +249,13 @@ void mini_tandem_output(int n_seqs, kseq_t *read_seq, tandem_seq_t *tseq, mini_t
                 cons_seq_end += (tseq+seq_i)->cons_len[cons_i];
                 for (i = cons_seq_start; i < cons_seq_end; ++i)  
                     fprintf(mtp->cons_out, "%c", _tseq->cons_seq->seq.s[i]);
-                fprintf(mtp->cons_out, "\n");
-                if (mtp->out_fmt == FASTQ_FMT) {
-                    fprintf(mtp->cons_out, "+\n");
+                if (mtp->out_fmt == FASTQ_FMT) fprintf(mtp->cons_out, "\n+\n");
+                else if (mtp->out_fmt == TAB_QUAL_FMT) fprintf(mtp->cons_out, "\t");
+                if (mtp->out_fmt == FASTQ_FMT || mtp->out_fmt == TAB_QUAL_FMT) {
                     for (i = cons_seq_start; i < cons_seq_end; ++i)
                         fprintf(mtp->cons_out, "%c", _tseq->cons_seq->qual.s[i]);
-                    fprintf(mtp->cons_out, "\n");
                 }
+                fprintf(mtp->cons_out, "\n");
                 cons_seq_start += _tseq->cons_len[cons_i];
             }
 		}
@@ -485,7 +487,7 @@ int main(int argc, char *argv[])
 			case 'l': mtp->only_longest = 1; break;
 			case 'F': mtp->only_full_length = 1; break;
 			case 'f': mtp->out_fmt = atoi(optarg); 
-					  if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT && mtp->out_fmt != FASTQ_FMT) {
+					  if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT && mtp->out_fmt != FASTQ_FMT && mtp->out_fmt != TAB_QUAL_FMT) {
 						  err_printf("\n[main] Error: unknown format number. (-%c)\n", c);
 						  goto End;
 					  }
@@ -497,6 +499,10 @@ int main(int argc, char *argv[])
 					  goto End;
 		}
 	}
+    if (mtp->only_unit && (mtp->out_fmt == FASTQ_FMT || mtp->out_fmt == TAB_QUAL_FMT)) {
+        err_fprintf(stderr, "\n[main] Error: unit sequences can only be ouput in FASTA or TAB format.\n");
+        usage(); goto End;
+    }
 	if (optind + 1 > argc) {
 		err_fprintf(stderr, "\n[main] Error: please specify an input file.\n");
 		usage(); goto End;
