@@ -10,15 +10,15 @@
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
 
-## Updates (v1.5.2)
-* Fixed a bug related to quality score output
+## Updates (v1.5.3)
+* Add Tabular with quality score output format (-f4)
 
 
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.5.2/TideHunter-v1.5.2.tar.gz
-tar -zxvf TideHunter-v1.5.2.tar.gz && cd TideHunter-v1.5.2
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.3/TideHunter-v1.5.3.tar.gz
+tar -zxvf TideHunter-v1.5.3.tar.gz && cd TideHunter-v1.5.3
 ```
 Make from source and run with test data:
 ```
@@ -78,9 +78,9 @@ Make sure you have gcc (>=6.4.0) and zlib installed before compiling.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.5.2/TideHunter-v1.5.2.tar.gz
-tar -zxvf TideHunter-v1.5.2.tar.gz
-cd TideHunter-v1.5.2; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.3/TideHunter-v1.5.3.tar.gz
+tar -zxvf TideHunter-v1.5.3.tar.gz
+cd TideHunter-v1.5.3; make
 ```
 Or, you can use `git clone` command to download the source code. 
 Don't forget to include the `--recursive` to download the codes of [abPOA](https://github.com/yangao07/abPOA).
@@ -93,8 +93,8 @@ cd TideHunter; make
 ### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.5.2/TideHunter-v1.5.2_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.5.2_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.3/TideHunter-v1.5.3_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.5.3_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
