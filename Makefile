@@ -1,5 +1,5 @@
 #CC      =   gcc
-CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation
+CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES
 
 # for debug
 ifneq ($(debug),)
@@ -27,7 +27,7 @@ SRC_DIR =   ./src
 LIB_DIR =   ./lib
 LIB           = -lm -lz -lpthread
 
-INCLUDE       =
+INCLUDE       = -IabPOA/include/simde
 
 ifneq ($(BUILD_PREFIX),)
 	INCLUDE_FLAG = "INCLUDE=-I$(BUILD_PREFIX)/include"
@@ -73,16 +73,19 @@ else ifneq ($(sse4),)
 else ifneq ($(avx2),)
 	KSW2_SIMD_FLAG = -msse4.1
 	ABPOA_SIMD_FLAG = "avx2=1"
-else ifneq ($(avx512f),)
-	KSW2_SIMD_FLAG = -msse4.1
-	ABPOA_SIMD_FLAG = "avx512f=1"
-else ifneq ($(avx512bw),)
-	KSW2_SIMD_FLAG = -msse4.1
-	ABPOA_SIMD_FLAG = "avx512bw=1"
 endif
 
-
-
+ifneq ($(armv7),) # for ARMv7
+        KSW2_SIMD_FLAG   =  -march=armv7-a -mfpu=neon -D__AVX2__
+else
+ifneq ($(armv8),) # for ARMv8
+ifneq ($(aarch64),) # for Aarch64
+        KSW2_SIMD_FLAG   =  -march=armv8-a+simd -D__AVX2__
+else # for Aarch32
+        KSW2_SIMD_FLAG   =  -march=armv8-a+simd -mfpu=auto -D__AVX2__
+endif
+endif
+endif
 
 CSOURCE    = $(wildcard $(SRC_DIR)/*.c)
 CSOURCE   += $(wildcard $(KSW2_DIR)/*.c)
