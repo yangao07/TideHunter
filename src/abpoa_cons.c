@@ -40,7 +40,7 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
     // |pos|-----|pos|-----pos|
     for (i = n_seqs = 0; i < pos_n-1; ++i) {
         int start = pos[i], end = pos[i+1];
-        if (start < 0 || end < 0 || start >= seq_len || end+1 >= seq_len) continue;
+        if (start < 0 || end < 0 || start >= seq_len-1 || end+1 > seq_len) continue;
         // fprintf(stdout, ">%d\n", start);
         seq_lens[n_seqs] = end - start;
         _bseqs[n_seqs] = bseqs + start + 1;
