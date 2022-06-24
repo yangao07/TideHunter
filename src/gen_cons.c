@@ -18,7 +18,7 @@ void write_tandem_cons_seq(tandem_seq_t *tseq, char *cons_seq, uint8_t *cons_qua
         tseq->cons_seq->seq.m = tseq->cons_seq->seq.l + cons_len + 1;
         tseq->cons_seq->seq.s = (char*)_err_realloc(tseq->cons_seq->seq.s, tseq->cons_seq->seq.m * sizeof(char));
     }
-    strcpy(tseq->cons_seq->seq.s + tseq->cons_seq->seq.l, cons_seq); tseq->cons_seq->seq.l += cons_len; 
+    strncpy(tseq->cons_seq->seq.s + tseq->cons_seq->seq.l, cons_seq, cons_len); tseq->cons_seq->seq.l += cons_len; 
     if (cons_qual) {
         if (tseq->cons_seq->qual.l + cons_len >= tseq->cons_seq->qual.m) {
             tseq->cons_seq->qual.m = tseq->cons_seq->qual.l + cons_len + 1;
@@ -80,6 +80,90 @@ void write_tandem_unit(tandem_seq_t *tseq, int *par_pos, int pos_n) {
     }
     for (i = 0; i < pos_n; ++i) tseq->sub_pos[tseq->cons_n][i] = par_pos[i];
     ++tseq->cons_n;
+}
+
+typedef struct {
+    int ed, start, end;
+} ed_res_t;
+
+int collect_ed_res(mini_tandem_para *mtp, char *q, int qlen, char *seq, int seq_len, ed_res_t *res) {
+    int n = 0, ed, start, end;
+    ed = edlib_align_HW(q, qlen, seq, seq_len, &start, &end, qlen * (1-mtp->ada_match_rat));
+    if (ed != -1) {
+        res[0].ed = ed; res[0].start = start; res[0].end = end; n++;
+        // 2nd
+        ed = edlib_align_HW(q, qlen, seq, res[0].start, &start, &end, qlen * (1-mtp->ada_match_rat));
+        if (ed != -1) {
+            res[n].ed = ed; res[n].start = start; res[n].end = end; n++;
+        } 
+        // 3rd
+        ed = edlib_align_HW(q, qlen, seq+res[0].end, seq_len-res[0].end, &start, &end, qlen * (1-mtp->ada_match_rat));
+        if (ed != -1) {
+            res[n].ed = ed; res[n].start = res[0].end+start; res[n].end = res[0].end+end; n++;
+        } 
+    }
+    return n;
+}
+
+int get_full_len_seq(mini_tandem_para *mtp, int left_n, ed_res_t *left_res, int right_n, ed_res_t *right_res, int *tar_start, int *tar_end) {
+    int tot_ed = INT32_MAX;
+    int i, j;
+    for (i = 0; i < left_n; ++i) {
+        for (j = 0; j < right_n; ++j) {
+            if (right_res[j].start - left_res[i].end - 1 >= mtp->min_len) {
+                if (tot_ed > left_res[i].ed + right_res[j].ed) {
+                    tot_ed = left_res[i].ed + right_res[j].ed;
+                    *tar_start = left_res[i].end + 1; *tar_end = right_res[j].start - 1;
+                }
+            }
+        }
+    }
+    return tot_ed;
+}
+
+void single_copy_full_len_seq(int seq_len, char *seq, tandem_seq_t *tseq, mini_tandem_para *mtp) {
+    int cons_len=0; 
+
+    // |---plus-5'adapter---|---target-sequence---|---minus-3'adapter---|
+    int full_length = 0, tar_start, tar_end, tot_ed;
+    ed_res_t *_5_ed_res = (ed_res_t*)_err_malloc(3 * sizeof(ed_res_t));
+    ed_res_t *_3_ed_res = (ed_res_t*)_err_malloc(3 * sizeof(ed_res_t));
+    int _5_n, _3_n;
+    int par_pos[2];
+    tar_start = tar_end = -1; tot_ed = INT32_MAX;
+    // XXX all _5/_3 in the seq
+    // choose the pair with smallest ed and with the correct direction
+    // collect at most 3 pos of _5/_3
+    _5_n = collect_ed_res(mtp, mtp->five_seq, mtp->five_len, seq, seq_len, _5_ed_res);
+    _3_n = collect_ed_res(mtp, mtp->three_rc_seq, mtp->five_len, seq, seq_len, _3_ed_res);
+    tot_ed = get_full_len_seq(mtp, _5_n, _5_ed_res, _3_n, _3_ed_res, &tar_start, &tar_end); 
+    if (tot_ed != INT32_MAX) {
+        par_pos[0] = tar_start; par_pos[1] = tar_end; cons_len = tar_end-tar_start+1;
+        full_length = 1;
+    }
+    if (tot_ed > 0) { // try rev-comp
+        _5_n = collect_ed_res(mtp, mtp->five_rc_seq, mtp->five_len, seq, seq_len, _5_ed_res);
+        _3_n = collect_ed_res(mtp, mtp->three_seq, mtp->five_len, seq, seq_len, _3_ed_res);
+        if (get_full_len_seq(mtp, _3_n, _3_ed_res, _5_n, _5_ed_res, &tar_start, &tar_end) < tot_ed) {
+            par_pos[0] = tar_start; par_pos[1] = tar_end; cons_len = tar_end-tar_start+1;
+            full_length = 2;
+        }
+    }
+    
+    // write single copy cons
+    if (full_length > 0) {
+        if (mtp->only_unit) write_tandem_unit(tseq, par_pos, 2); 
+        else {
+            int i; uint8_t *cons_qual = NULL;
+            if (mtp->out_fmt == FASTQ_FMT || mtp->out_fmt == TAB_QUAL_FMT) {
+                cons_qual = (uint8_t*)_err_malloc(cons_len * sizeof(uint8_t));
+                for (i = 0; i < cons_len; ++i) cons_qual[i] = 33;
+            }
+            write_tandem_cons_seq(tseq, seq+tar_start, cons_qual, cons_len, tar_start, tar_end, 1.0, 100.0, mtp, full_length, par_pos, 2);
+            if (cons_qual != NULL) free(cons_qual); 
+        }
+    }
+    free(_5_ed_res); free(_3_ed_res);
 }
 
 void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t *tseq, mini_tandem_para *mtp, abpoa_t *ab, abpoa_para_t *abpt) {
@@ -147,10 +231,10 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                         tar_start = tar_end = -1;
                         // |---plus-5'adapter---|---target-sequence---|---minus-3'adapter---|
                         _5_start = _5_end = _3_start = _3_end = -1; tot_ed = INT32_MAX;
-                        _5_ed = edlib_align_HW(mtp->five_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end);
-                        if (_5_ed > mtp->five_len * (1-mtp->ada_match_rat)) goto REV;
-                        _3_ed = edlib_align_HW(mtp->three_rc_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end);
-                        if (_3_ed > mtp->three_len * (1-mtp->ada_match_rat)) goto REV; 
+                        _5_ed = edlib_align_HW(mtp->five_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end, mtp->five_len * (1-mtp->ada_match_rat));
+                        if (_5_ed == -1) goto REV;
+                        _3_ed = edlib_align_HW(mtp->three_rc_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end, mtp->three_len * (1-mtp->ada_match_rat));
+                        if (_3_ed == -1) goto REV; 
                         if (_3_start <= _5_end) {
                             if (_3_end + cons_len < cons_len << 1 && _3_start + cons_len > _5_end) {
                                 tar_start = _5_end + 1;
@@ -170,10 +254,10 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
                         if (tot_ed == 0) goto WRITE_CONS;
                         // |---plus-3'adapter---|---target-sequence---|---minus-5'adapter---|
 REV:
-                        _5_ed = edlib_align_HW(mtp->five_rc_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end);
-                        if (_5_ed > mtp->five_len * (1-mtp->ada_match_rat)) goto WRITE_CONS;
-                        _3_ed = edlib_align_HW(mtp->three_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end);
-                        if (_3_ed > mtp->three_len * (1-mtp->ada_match_rat)) goto WRITE_CONS; 
+                        _5_ed = edlib_align_HW(mtp->five_rc_seq, mtp->five_len, cons2, cons_len<<1, &_5_start, &_5_end, mtp->five_len * (1-mtp->ada_match_rat));
+                        if (_5_ed == -1) goto WRITE_CONS;
+                        _3_ed = edlib_align_HW(mtp->three_seq, mtp->three_len, cons2, cons_len<<1, &_3_start, &_3_end, mtp->three_len * (1-mtp->ada_match_rat));
+                        if (_3_ed == -1) goto WRITE_CONS; 
                         if (_5_ed + _3_ed < tot_ed) {
                             if (_5_start <= _3_end) {
                                 if (_5_end + cons_len < cons_len << 1 && _5_start + cons_len > _3_end) {

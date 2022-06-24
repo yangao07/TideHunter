@@ -56,9 +56,9 @@ int* edlibAlignmentToXID(const unsigned char* const alignment, const int alignme
     return xid;
 }
 
-int edlib_align_NW(char *query, int qlen, char *target, int tlen) {
+int edlib_align_NW(char *query, int qlen, char *target, int tlen, int k) {
     int iden_n = 0;
-    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_NW, EDLIB_TASK_PATH, additionalEqualities, 5));
+    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(k, EDLIB_MODE_NW, EDLIB_TASK_PATH, additionalEqualities, 5));
     if (result.status == EDLIB_STATUS_OK) {
         int *xid = edlibAlignmentToXID(result.alignment, result.alignmentLength);
         if (xid != 0) {
@@ -70,20 +70,24 @@ int edlib_align_NW(char *query, int qlen, char *target, int tlen) {
     return iden_n;
 }
 
-int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, int *end) {
+int edlib_align_HW(char *query, int qlen, char *target, int tlen, int *start, int *end, int k) {
     int ed = -1;
-    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_HW, EDLIB_TASK_LOC, additionalEqualities, 5));
+    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(k, EDLIB_MODE_HW, EDLIB_TASK_LOC, additionalEqualities, 5));
     if (result.status == EDLIB_STATUS_OK) {
-        ed = result.editDistance, *start = result.startLocations[0], *end = result.endLocations[0];
+        ed = result.editDistance;
+        if (ed >= 0) {
+            *start = result.startLocations[0];
+            *end = result.endLocations[0];
+        }
     }
     edlibFreeAlignResult(result);
     return ed;
 }
 
 // prefix global-alignment
-int edlib_align_SHW(char *query, int qlen, char *target, int tlen) {
+int edlib_align_SHW(char *query, int qlen, char *target, int tlen, int k) {
     int iden_n = 0;
-    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(-1, EDLIB_MODE_SHW, EDLIB_TASK_PATH, additionalEqualities, 5));
+    EdlibAlignResult result = edlibAlign(query, qlen, target, tlen, edlibNewAlignConfig(k, EDLIB_MODE_SHW, EDLIB_TASK_PATH, additionalEqualities, 5));
     if (result.status == EDLIB_STATUS_OK) {
         int *xid = edlibAlignmentToXID(result.alignment, result.alignmentLength);
         if (xid != 0) {
@@ -96,13 +100,13 @@ int edlib_align_SHW(char *query, int qlen, char *target, int tlen) {
 }
 
 // suffix global-alignment
-int edlib_align_UHW(char *query, int qlen, char *target, int tlen) {
+int edlib_align_UHW(char *query, int qlen, char *target, int tlen, int k) {
     char *rquery = (char*)_err_malloc(qlen * sizeof(char));
     char *rtarget = (char*)_err_malloc(tlen * sizeof(char));
     int i, iden_n=0;
     for (i = 0; i < qlen; ++i) rquery[i] = query[qlen-i-1];
     for (i = 0; i < tlen; ++i) rtarget[i] = target[tlen-i-1];
-    iden_n = edlib_align_SHW(rquery, qlen, rtarget, tlen);
+    iden_n = edlib_align_SHW(rquery, qlen, rtarget, tlen, k);
 
     free(rquery); free(rtarget);
     return iden_n;
@@ -122,7 +126,7 @@ int main(void) {
     // printf("iden_n : %d\n", iden_n);
     // iden_n = edlib_align_SHW(str1, strlen(str1), str2, strlen(str2));
     // printf("iden_n : %d\n", iden_n);
-    ed = edlib_align_HW(str1, strlen(str1), str2, strlen(str2), &start, &end);
+    ed = edlib_align_HW(str1, strlen(str1), str2, strlen(str2), &start, &end, -1);
     // printf("ed: %d, start: %d, end: %d\n", ed, start, end);
     return 0;
 }

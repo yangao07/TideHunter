@@ -38,11 +38,12 @@ int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp,
         ch = chain[ch_i];
         int par_n, *par_pos;
         par_pos = get_partition_pos_with_narrow_global_alignment(bseq, seq_len, dp, ch, mtp, &par_n);
-        if (par_n < mtp->min_copy+1) {
-            free(par_pos); continue;
-        }
-        // msa and generate consensus
-        seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp, ab, abpt);
+        if (par_n < mtp->min_copy+1) { // not enough copies
+            if (mtp->only_full_length && mtp->five_seq != NULL && mtp->three_seq != NULL) { // for 1-copy full-length seq
+                single_copy_full_len_seq(seq_len, seq, tseq, mtp);
+            }
+            free(par_pos);
+        } else seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp, ab, abpt); // msa and generate consensus 
     }
 
     free(bseq);

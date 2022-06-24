@@ -36,7 +36,7 @@ int *partition_seqs_core(char *seq, int seq_len, int8_t *hit_array, int est_peri
             // target_start = pos_array[0] - period[pos_array[0]] * j - (l<<1);
             if (target_start < 0) continue;
             target_seq = seq + target_start;
-            ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end);
+            ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end, -1);
             // ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
             if (ed >= 0) par_pos[par_i++] = target_start + start;
         }
@@ -51,7 +51,7 @@ int *partition_seqs_core(char *seq, int seq_len, int8_t *hit_array, int est_peri
                 target_start = pos_array[i] + est_period * j - (l << 0);
                 // target_start = pos_array[i] + ave_p * j - (l << 1);
                 target_seq = seq + target_start;
-                ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end);
+                ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end, -1);
                 // ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
                 if (ed < 0) { // no alignment result
                     par_pos[par_i++] = -1; // skip this copy
@@ -72,7 +72,7 @@ int *partition_seqs_core(char *seq, int seq_len, int8_t *hit_array, int est_peri
             if (target_start + (l<<1) >= seq_len) continue;
             // if (target_start + (l<<2) >= seq_len) continue;
             target_seq = seq + target_start;
-            ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end);
+            ed = edlib_align_HW(query_seq, l, target_seq, l<<1, &start, &end, -1);
             // ed = edlib_align_HW(query_seq, l, target_seq, l<<2, &start, &end);
             if (ed >= 0) par_pos[par_i++] = target_start + start;
         }

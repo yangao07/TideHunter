@@ -465,7 +465,7 @@ int main(int argc, char *argv[])
 						  goto End;
 					  }
 					  break;
-		  //case 'r': mtp->max_range = th_parse_num(optarg); break;
+		    //case 'r': mtp->max_range = th_parse_num(optarg); break;
 
             case 'M': mtp->match = atoi(optarg); break;
             case 'X': mtp->mismatch = atoi(optarg); break;
