@@ -32,21 +32,24 @@ int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp,
     // chaining by DP
     dp_t **dp; int tot_n=0; chain_t *chain; int ch_m=0;
     int ch_n = tandem_chain(seq_len, hit_h, hit_n, mtp, &dp, &tot_n, &chain, &ch_m); free(hit_h);
-    int ch_i, i; chain_t ch;
+    int ch_i, i; chain_t ch; int has_tandem_repeats = 0;
     for (ch_i = 0; ch_i < ch_n; ++ch_i) {
         // partition seq into segments
         ch = chain[ch_i];
         int par_n, *par_pos;
         par_pos = get_partition_pos_with_narrow_global_alignment(bseq, seq_len, dp, ch, mtp, &par_n);
-        if (par_n < mtp->min_copy+1) { // not enough copies
-            if (mtp->only_full_length && mtp->five_seq != NULL && mtp->three_seq != NULL) { // for 1-copy full-length seq
-                single_copy_full_len_seq(seq_len, seq, tseq, mtp);
-            }
-            free(par_pos);
-        } else seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp, ab, abpt); // msa and generate consensus 
+        if (par_n < mtp->min_copy+1) free(par_pos);// not enough copies
+        else {
+            seqs_msa(seq_len, bseq, par_n, par_pos, tseq, mtp, ab, abpt); // msa and generate consensus 
+            has_tandem_repeats = 1;
+        }
+    }
+    free(bseq);
+
+    if (has_tandem_repeats == 0 && mtp->only_full_length && mtp->five_seq != NULL && mtp->three_seq != NULL) { // for 1-copy full-length seq
+        single_copy_full_len_seq(seq_len, seq, tseq, mtp);
     }
 
-    free(bseq);
     if (ch_m > 0) {
         for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain);
     }
