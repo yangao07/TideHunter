@@ -159,7 +159,7 @@ void single_copy_full_len_seq(int seq_len, char *seq, tandem_seq_t *tseq, mini_t
                 cons_qual = (uint8_t*)_err_malloc(cons_len * sizeof(uint8_t));
                 for (i = 0; i < cons_len; ++i) cons_qual[i] = 33;
             }
-            write_tandem_cons_seq(tseq, seq+tar_start, cons_qual, cons_len, tar_start, tar_end, 1.0, 100.0, mtp, full_length, par_pos, 2);
+            write_tandem_cons_seq(tseq, seq+par_pos[0], cons_qual, cons_len, par_pos[0], par_pos[1], 1.0, 100.0, mtp, full_length, par_pos, 2);
             if (cons_qual != NULL) free(cons_qual); 
         }
     }
