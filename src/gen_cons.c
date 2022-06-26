@@ -152,7 +152,7 @@ void single_copy_full_len_seq(int seq_len, char *seq, tandem_seq_t *tseq, mini_t
     
     // write single copy cons
     if (full_length > 0) {
-        if (mtp->only_unit) write_tandem_unit(tseq, par_pos, 2); 
+        if (mtp->only_unit) write_tandem_unit(tseq, par_pos, 2);
         else {
             int i; uint8_t *cons_qual = NULL;
             if (mtp->out_fmt == FASTQ_FMT || mtp->out_fmt == TAB_QUAL_FMT) {
@@ -173,7 +173,7 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
         if (mtp->out_fmt == FASTQ_FMT || mtp->out_fmt == TAB_QUAL_FMT) cons_qual = (uint8_t*)_err_malloc(seq_len * sizeof(uint8_t));
 #ifdef __DEBUG__
         {
-            int i, j, seq_i = 0, start, end; 
+            int i, j, seq_i = 0, start, end;
             for (i = 0; i < par_n-1; ++i) {
                 if (par_pos[i] >= 0 && par_pos[i+1] >= 0) {
                     start = par_pos[i], end = par_pos[i+1];
@@ -184,9 +184,9 @@ void seqs_msa(int seq_len, uint8_t *bseq, int par_n, int *par_pos, tandem_seq_t 
             }
         }
 #endif
-        int i = 0, j, k, s; 
+        int i = 0, j, k, s;
         while (i < par_n-mtp->min_copy) {
-            if (par_pos[i] < 0) { 
+            if (par_pos[i] < 0) {
                 i++;
                 continue;
             }
@@ -293,5 +293,5 @@ WRITE_CONS:
             i = j + 1;
         }
         free(cons_seq); free(cons_bseq); free(par_pos);
-        if (cons_qual) free(cons_qual); 
+        if (cons_qual) free(cons_qual);
 }

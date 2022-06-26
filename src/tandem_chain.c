@@ -23,7 +23,9 @@ int dp_score_cmp(const void *a, const void *b) {
 }
 
 int triple_i_cmp(const void *a, const void *b) {
-    return (*(triple_t*)a).x - (*(triple_t*)b).x;
+    if ((*(triple_t*)a).x != (*(triple_t*)b).x)
+        return (*(triple_t*)a).x - (*(triple_t*)b).x;
+    else return (*(triple_t*)a).y - (*(triple_t*)b).y;
 }
 
 // TODO use heap to only keep top N scores
@@ -245,6 +247,12 @@ int get_adj_dis_penalty(dp_t **dp, chain_t *ch, int i) {
     }
     return ilog2_32(adj_ave_dis) / 2;
 }
+// new XXX
+void set_start_period(dp_t **dp, chain_t *ch) {
+    cell_t c = ch->cell[0]; dp_t d = dp[c.i][c.j];
+    ch->est_period = d.end - d.start; ch->est_start = d.start; ch->est_ch_i = 0;
+    return;
+}
 
 // calculate period for each hit
 void get_medoid_period(dp_t **dp, chain_t *ch) {
@@ -252,7 +260,6 @@ void get_medoid_period(dp_t **dp, chain_t *ch) {
     triple_t *t = (triple_t*)_err_malloc(ch->len * sizeof(triple_t));
     cell_t c; dp_t d;
     // collect period
-    ch->max_period = INT32_MIN; ch->min_period = INT32_MAX;
     for (i = 0; i < ch->len; ++i) {
         c = ch->cell[i]; d = dp[c.i][c.j];
         t[i].x = d.end - d.start; t[i].y = d.start; t[i].z = i;
@@ -262,8 +269,6 @@ void get_medoid_period(dp_t **dp, chain_t *ch) {
     ch->est_period = 0;
     for (i = 0; i < ch->len; ++i) {
         if (t[i].x == last_p) continue;
-        if (t[i].x > ch->max_period) ch->max_period = t[i].x;
-        if (t[i].x < ch->min_period) ch->min_period = t[i].x;
         last_p = t[i].x;
         pp = get_period_penalty(t[i].x, t, ch->len) + get_adj_dis_penalty(dp, ch, t[i].z) * ch->len;
 #ifdef __DEBUG__
@@ -272,7 +277,7 @@ void get_medoid_period(dp_t **dp, chain_t *ch) {
         if (pp < min_pp) {
             ch->est_period = t[i].x; ch->est_start = t[i].y; ch->est_ch_i = t[i].z;
             min_pp = pp;
-        } 
+        }
     }
     free(t);
 #ifdef __DEBUG__
@@ -314,7 +319,7 @@ int tandem_chain(int seq_len, hash_t *hash_hit, int hash_hit_n, mini_tandem_para
     init_dp(hash_hit, dp, hash_index, array_size, tot_n, kmer_k);
 
     // main DP process
-    int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, con_score, score, max_score; 
+    int cur_i, cur_j, pre_i, pre_j, max_pre_i, max_pre_j, con_score, score, max_score;
     int con_res, iter_n, max_h; // max_h: number of meaningless iterations to stop DP
     dp_t *cur_dp, *pre_dp;
     for (cur_i = 1; cur_i < tot_n; ++cur_i) {
@@ -389,8 +394,10 @@ UPDATE:
         copy_chain(chain+chain_idx[i], seq_len, 0, chain[chain_idx[i]].len-1, post_chain, &post_ch_n, post_ch_m);
         //copy_chain(chain+i, seq_len, 0, chain[i].len-1, post_chain, &post_ch_n, post_ch_m); // do not split chain; split chain based on alignment
     }
-    for (i = 0; i < post_ch_n; ++i)
-        get_medoid_period(dp, (*post_chain)+i);
+    for (i = 0; i < post_ch_n; ++i) {
+        set_start_period(dp, (*post_chain)+i);
+        // get_medoid_period(dp, (*post_chain)+i);
+    }
     for (i = 0; i < ch_m; ++i) free(chain[i].cell); free(chain); free(chain_idx);
     free(array_size); free(hash_index); free(score_rank);
     return post_ch_n;

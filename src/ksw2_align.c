@@ -85,7 +85,7 @@ int *ksw2_get_xid(uint32_t *cigar, int n_cigar, const uint8_t *query, const uint
     return xid;
 }
 
-int backtrack_left_end(int n_cigar, uint32_t *cigar, int qlen, int tlen, int q_left_ext) {
+int ksw2_backtrack_left_end(int n_cigar, uint32_t *cigar, int qlen, int tlen, int q_left_ext) {
     int t_left_ext = 0, i, j, op, len;
     int q_remain_len = q_left_ext;
     for (i = n_cigar-1; i >=0; --i) {

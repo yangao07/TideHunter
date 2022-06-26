@@ -110,7 +110,7 @@ int *get_partition_pos_with_global_alignment(uint8_t *bseq, int seq_len, dp_t **
                 printf("iden_n: %d (%d,%d), (%d,%d)\n", iden_n, e2-e1+k, s2-s1+k, s1, s2);
                 #endif
                 if (iden_n >= MIN_OF_TWO(s2-s1+k, e2-e1+k) * (1-mtp->max_div)) { // extend partition
-                    s = s2 - backtrack_left_end(n_cigar, cigar, e2-e1+k, s2-s1+k, e2-s2);
+                    s = s2 - ksw2_backtrack_left_end(n_cigar, cigar, e2-e1+k, s2-s1+k, e2-s2);
                     par_pos[(*par_n)++] = s; 
                     ch_i2 = i+1; e2 = s2, s2 = s;
                 } else { // skip this anchor
@@ -148,7 +148,7 @@ int *get_partition_pos_with_global_alignment(uint8_t *bseq, int seq_len, dp_t **
                 printf("iden_n: %d (%d,%d), (%d,%d)\n", iden_n, e2-e1+k, s2-s1+k, s1, s2);
                 #endif
                 if (iden_n >= MIN_OF_TWO(s2-s1+k, e2-e1+k) * (1-mtp->max_div)) {
-                    e = e2 - backtrack_left_end(n_cigar, cigar, s2-s1+k, e2-e1+k, s2-e1);
+                    e = e2 - ksw2_backtrack_left_end(n_cigar, cigar, s2-s1+k, e2-e1+k, s2-e1);
                     par_pos[(*par_n)++] = e; 
                     ch_i1 = i-1; s1 = e1, e1 = e;
                 } else {
@@ -203,15 +203,15 @@ int *get_partition_pos_with_narrow_global_alignment(uint8_t *bseq, int seq_len, 
                 printf("iden_n: %d (%d,%d), (%d,%d)\n", iden_n, e2-e1+k, s2-s1+k, s1, s2);
                 #endif
                 if (iden_n >= MIN_OF_TWO(s2-s1+k, e2-e1+k) * (1-mtp->max_div)) { // extend partition
-                    e = s; s = s2 - backtrack_left_end(n_cigar, cigar, e2-e1+k, s2-s1+k, e2-s);
+                    e = s; s = s2 - ksw2_backtrack_left_end(n_cigar, cigar, e2-e1+k, s2-s1+k, e2-s);
                     if (e == s) { // no backtrack
                         ch_i = 0; break;
                     }
-                    par_pos[(*par_n)++] = s; 
+                    par_pos[(*par_n)++] = s;
                     ch_i = i+1;
                 } else { // skip this anchor
                     par_pos[(*par_n)++] = -1; // insert a separation flag
-                    par_pos[(*par_n)++] = e1; 
+                    par_pos[(*par_n)++] = e1; // start of another tandem repeat, another consensus will be called separatedly
                     par_pos[(*par_n)++] = s1; 
                     ch_i = i; s = s1; e = e1;
                 }
@@ -252,7 +252,7 @@ int *get_partition_pos_with_narrow_global_alignment(uint8_t *bseq, int seq_len, 
                 printf("iden_n: %d (%d,%d), (%d,%d)\n", iden_n, e2-e1+k, s2-s1+k, s1, s2);
                 #endif
                 if (iden_n >= MIN_OF_TWO(s2-s1+k, e2-e1+k) * (1-mtp->max_div)) {
-                    s = e; e = e2 - backtrack_left_end(n_cigar, cigar, s2-s1+k, e2-e1+k, s2-e);
+                    s = e; e = e2 - ksw2_backtrack_left_end(n_cigar, cigar, s2-s1+k, e2-e1+k, s2-e);
                     if (e == s) { // no backtrack
                         ch_i = ch.len; break;
                     }
