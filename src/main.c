@@ -11,7 +11,7 @@
 
 const char PROG[20] = "TideHunter";
 const char VERSION[20] = "1.5.4";
-const char CONTACT[30] = "gaoy1@chip.edu";
+const char CONTACT[30] = "gaoy1@chop.edu";
 
 const struct option mini_tandem_opt [] = {
 	{ "kmer-length", 1, NULL, 'k' },

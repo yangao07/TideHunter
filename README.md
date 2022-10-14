@@ -289,6 +289,6 @@ unitSeq Y
 ## <a name="contact"></a>Contact
 Yan Gao gaoy1@chop.edu
 
-Yi Xing XINGYI@email.chop.edu
+Yi Xing XINGYI@chop.edu
 
 [github issues](https://github.com/yangao07/TideHunter/issues)
