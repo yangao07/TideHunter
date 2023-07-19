@@ -92,15 +92,19 @@ int collect_ed_res(mini_tandem_para *mtp, char *q, int qlen, char *seq, int seq_
     if (ed != -1) {
         res[0].ed = ed; res[0].start = start; res[0].end = end; n++;
         // 2nd
-        ed = edlib_align_HW(q, qlen, seq, res[0].start, &start, &end, qlen * (1-mtp->ada_match_rat));
-        if (ed != -1) {
-            res[n].ed = ed; res[n].start = start; res[n].end = end; n++;
-        } 
+        if (res[0].start >= qlen) {
+            ed = edlib_align_HW(q, qlen, seq, res[0].start, &start, &end, qlen * (1-mtp->ada_match_rat));
+            if (ed != -1) {
+                res[n].ed = ed; res[n].start = start; res[n].end = end; n++;
+            }
+        }
         // 3rd
-        ed = edlib_align_HW(q, qlen, seq+res[0].end, seq_len-res[0].end, &start, &end, qlen * (1-mtp->ada_match_rat));
-        if (ed != -1) {
-            res[n].ed = ed; res[n].start = res[0].end+start; res[n].end = res[0].end+end; n++;
-        } 
+        if (res[0].end <= seq_len-qlen) {
+            ed = edlib_align_HW(q, qlen, seq+res[0].end, seq_len-res[0].end, &start, &end, qlen * (1-mtp->ada_match_rat));
+            if (ed != -1) {
+                res[n].ed = ed; res[n].start = res[0].end+start; res[n].end = res[0].end+end; n++;
+            }
+        }
     }
     return n;
 }
@@ -135,7 +139,7 @@ void single_copy_full_len_seq(int seq_len, char *seq, tandem_seq_t *tseq, mini_t
     // choose the pair with smallest ed and with the correct direction
     // collect at most 3 pos of _5/_3
     _5_n = collect_ed_res(mtp, mtp->five_seq, mtp->five_len, seq, seq_len, _5_ed_res);
-    _3_n = collect_ed_res(mtp, mtp->three_rc_seq, mtp->five_len, seq, seq_len, _3_ed_res);
+    _3_n = collect_ed_res(mtp, mtp->three_rc_seq, mtp->three_len, seq, seq_len, _3_ed_res);
     tot_ed = get_full_len_seq(mtp, _5_n, _5_ed_res, _3_n, _3_ed_res, &tar_start, &tar_end); 
     if (tot_ed != INT32_MAX) {
         par_pos[0] = tar_start; par_pos[1] = tar_end; cons_len = tar_end-tar_start+1;
@@ -143,7 +147,7 @@ void single_copy_full_len_seq(int seq_len, char *seq, tandem_seq_t *tseq, mini_t
     }
     if (tot_ed > 0) { // try rev-comp
         _5_n = collect_ed_res(mtp, mtp->five_rc_seq, mtp->five_len, seq, seq_len, _5_ed_res);
-        _3_n = collect_ed_res(mtp, mtp->three_seq, mtp->five_len, seq, seq_len, _3_ed_res);
+        _3_n = collect_ed_res(mtp, mtp->three_seq, mtp->three_len, seq, seq_len, _3_ed_res);
         if (get_full_len_seq(mtp, _3_n, _3_ed_res, _5_n, _5_ed_res, &tar_start, &tar_end) < tot_ed) {
             par_pos[0] = tar_start; par_pos[1] = tar_end; cons_len = tar_end-tar_start+1;
             full_length = 2;

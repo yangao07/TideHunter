@@ -31,7 +31,8 @@ int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp,
     int hit_n = collect_tandem_repeat_hit(bseq, seq_len, mtp, &hit_h);
     // chaining by DP
     dp_t **dp; int tot_n=0; chain_t *chain; int ch_m=0;
-    int ch_n = tandem_chain(seq_len, hit_h, hit_n, mtp, &dp, &tot_n, &chain, &ch_m); free(hit_h);
+    int ch_n = tandem_chain(seq_len, hit_h, hit_n, mtp, &dp, &tot_n, &chain, &ch_m); 
+    if (hit_n > 0) free(hit_h);
     int ch_i, i; chain_t ch;
     for (ch_i = 0; ch_i < ch_n; ++ch_i) {
         // partition seq into segments
