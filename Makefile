@@ -1,5 +1,5 @@
 #CC      =   gcc
-CFLAGS  =	-Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES
+CFLAGS  =	-std=gnu99 -Wall -O3 -Wno-unused-variable -Wno-unused-function -Wno-misleading-indentation -DUSE_SIMDE -DSIMDE_ENABLE_NATIVE_ALIASES
 
 # for debug
 ifneq ($(debug),)
