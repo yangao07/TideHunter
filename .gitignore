@@ -55,6 +55,8 @@ data/*
 .tags
 tags
 cscope.*
+.vscode
 src/.tags
 src/tags
 src/cscope*
+src/.vscode

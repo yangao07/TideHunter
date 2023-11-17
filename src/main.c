@@ -10,7 +10,7 @@
 #include "kseq.h"
 
 const char PROG[20] = "TideHunter";
-const char VERSION[20] = "1.5.4";
+const char VERSION[20] = "1.5.5";
 const char CONTACT[30] = "gaoy1@chop.edu";
 
 const struct option mini_tandem_opt [] = {
@@ -85,7 +85,7 @@ static int usage(void)
 
 	err_printf("  Tandem repeat criteria:\n");
 	// TODO min_copy < 2 ???
-	err_printf("    -c --min-copy    INT    minimum copy number of tandem repeat [%d]\n", MIN_COPY);
+	err_printf("    -c --min-copy    INT    minimum copy number of tandem repeat (>=%d) [%d]\n", MIN_COPY, MIN_COPY);
 	err_printf("    -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats [%.2f]\n", MAX_DIV);
 	err_printf("    -p --min-period  INT    minimum period size of tandem repeat (>=%u) [%u]\n", MIN_PERIOD, DEF_MIN_PERIOD);
 	err_printf("    -P --max-period  INT    maximum period size of tandem repeat (<=%u) [%s]\n", MAX_PERIOD, DEF_MAX_PERIOD_STR);
@@ -118,7 +118,11 @@ static int usage(void)
     err_printf("                            if \e[4mr\e[0m is integer: \e[4mR\e[0m = \e[4mr\e[0m\n");
     err_printf("    -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]\n");
 	err_printf("    -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]\n");
-	err_printf("    -F --full-len           only output full-length consensus sequence [False]\n");
+	err_printf("    -F --full-len           only output full-length consensus sequence. [False]\n");
+	err_printf("                            full-length: consensus sequence contains both 5' and 3' adapter sequence\n");
+	err_printf("                            *Note* only effective when -5 and -3 are provided.\n");
+	err_printf("    -s --single-copy        output additional single-copy full-length consensus sequence. [False]\n");
+	err_printf("                            *Note* only effective when -F is set and -5 and -3 are provided.\n");
 	err_printf("    -f --out-fmt     INT    output format [%d]\n", FASTA_FMT);
 	err_printf("                            - %d: FASTA\n", FASTA_FMT);
 	err_printf("                            - %d: Tabular\n", TAB_FMT);
@@ -350,6 +354,7 @@ mini_tandem_para *mini_tandem_init_para(void) {
     mtp->only_unit = 0;
 	mtp->only_longest = 0;
 	mtp->only_full_length = 0;
+	mtp->single_copy = 0;
 	mtp->out_fmt = FASTA_FMT;
 	mtp->detail_fp = NULL;
 
@@ -451,7 +456,12 @@ int main(int argc, char *argv[])
 			// case 's': mtp->s = atoi(optarg); break;
 			case 'H': mtp->hpc = 1; break;
 
-			case 'c': mtp->min_copy = atoi(optarg); break;
+			case 'c': mtp->min_copy = atoi(optarg); 
+					  if (mtp->min_copy < MIN_COPY) {
+						  err_printf("Error: -c --min-copy needs to be >= %d. (%d)\n", MIN_COPY, mtp->min_copy); 
+						  goto End;
+					  }
+					  break;
 			case 'e': mtp->max_div = atof(optarg); break;
 			case 'p': mtp->min_p = th_parse_num(optarg);
 					  if (mtp->min_p < MIN_PERIOD) {
@@ -486,6 +496,7 @@ int main(int argc, char *argv[])
             case 'u': mtp->only_unit = 1; break;
 			case 'l': mtp->only_longest = 1; break;
 			case 'F': mtp->only_full_length = 1; break;
+			case 's': mtp->single_copy = 1; break;
 			case 'f': mtp->out_fmt = atoi(optarg); 
 					  if (mtp->out_fmt != FASTA_FMT && mtp->out_fmt != TAB_FMT && mtp->out_fmt != FASTQ_FMT && mtp->out_fmt != TAB_QUAL_FMT) {
 						  err_printf("\n[main] Error: unknown format number. (-%c)\n", c);

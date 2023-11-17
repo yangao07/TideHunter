@@ -10,16 +10,16 @@
 [![GitHub Downloads](https://img.shields.io/github/downloads/yangao07/TideHunter/total.svg?style=social&logo=github&label=Download)](https://github.com/yangao07/TideHunter/releases)
 -->
 
-## Updates (v1.5.4)
-* Fixed a bug related to msa (#6)
-* Output single-copy full-length sequence when 5/3 adapters are provided
+## Updates (v1.5.5)
+* Output additional single-copy full-length sequence when 5/3 adapters are provided
+* Copy number needs to be >= 2 for regular tandem repeats
 
 
 ## Getting started
 Download the [latest release](https://github.com/yangao07/TideHunter/releases):
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.5.4/TideHunter-v1.5.4.tar.gz
-tar -zxvf TideHunter-v1.5.4.tar.gz && cd TideHunter-v1.5.4
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.5/TideHunter-v1.5.5.tar.gz
+tar -zxvf TideHunter-v1.5.5.tar.gz && cd TideHunter-v1.5.5
 ```
 Make from source and run with test data:
 ```
@@ -32,28 +32,32 @@ TideHunter ./test_data/test_50x4.fa > cons.fa
 ```
 ## Table of Contents
 
-- [Introduction](#introduction)
-- [Installation](#install)
-  - [Installing TideHunter via conda](#conda)
-  - [Building TideHunter from source files](#build)
-  - [Pre-built binary executable file for Linux/Unix](#binary)
-- [Getting started with toy example in `test_data`](#start)
-- [Usage](#usage)
-  - [To generate consensus sequences in FASTA format](#fasta_cons)
-  - [To generate consensus sequences in tabular format](#tab_cons)
-  - [To generate consensus sequences in FASTQ format](#fq_cons)
-  - [To generate full-length consensus sequences](#full_cons)
-  - [To generate unit sequences in FASTA format](#fasta_unit)
-  - [To generate unit sequences in tabular format](#tab_unit)
-- [Commands and options](#cmd)
-- [Input](#input)
-  - [Adapter sequence](#adapter)
-- [Output](#output)
-  - [Tabular format](#tabular)
-  - [FASTA format](#fasta)
-  - [FASTQ format](#fastq)
-  - [Unit sequences](#unit)
-- [Contact](#contact)
+- [TideHunter: efficient and sensitive tandem repeat detection from noisy long reads using seed-and-chain](#tidehunter-efficient-and-sensitive-tandem-repeat-detection-from-noisy-long-reads-using-seed-and-chain)
+  - [Updates (v1.5.5)](#updates-v155)
+  - [Getting started](#getting-started)
+  - [Table of Contents](#table-of-contents)
+  - [Introduction](#introduction)
+  - [Installation](#installation)
+    - [Installing TideHunter via conda](#installing-tidehunter-via-conda)
+    - [Building TideHunter from source files](#building-tidehunter-from-source-files)
+    - [Pre-built binary executable file for Linux/Unix](#pre-built-binary-executable-file-for-linuxunix)
+  - [Getting started with toy example in `test_data`](#getting-started-with-toy-example-in-test_data)
+  - [Usage](#usage)
+      - [To generate consensus sequences in FASTA format](#to-generate-consensus-sequences-in-fasta-format)
+      - [To generate consensus sequences in tabular format](#to-generate-consensus-sequences-in-tabular-format)
+      - [To generate consensus sequences in FASTQ format](#to-generate-consensus-sequences-in-fastq-format)
+      - [To generate full-length consensus sequences](#to-generate-full-length-consensus-sequences)
+      - [To generate unit sequences in FASTA format](#to-generate-unit-sequences-in-fasta-format)
+      - [To generate unit sequences in tabular format](#to-generate-unit-sequences-in-tabular-format)
+  - [Commands and options](#commands-and-options)
+  - [Input](#input)
+    - [Adapter sequence](#adapter-sequence)
+  - [Output](#output)
+    - [Tabular format](#tabular-format)
+    - [FASTA format](#fasta-format)
+    - [FASTQ format](#fastq-format)
+    - [Unit sequences](#unit-sequences)
+  - [Contact](#contact)
 
 ## <a name="introduction"></a>Introduction
 TideHunter is an efficient and sensitive tandem repeat detection and
@@ -79,9 +83,9 @@ Make sure you have gcc (>=6.4.0) and zlib installed before compiling.
 It is recommended to download the latest release of TideHunter 
 from the [release page](https://github.com/yangao07/TideHunter/releases).
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.5.4/TideHunter-v1.5.4.tar.gz
-tar -zxvf TideHunter-v1.5.4.tar.gz
-cd TideHunter-v1.5.4; make
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.5/TideHunter-v1.5.5.tar.gz
+tar -zxvf TideHunter-v1.5.5.tar.gz
+cd TideHunter-v1.5.5; make
 ```
 Or, you can use `git clone` command to download the source code. 
 Don't forget to include the `--recursive` to download the codes of [abPOA](https://github.com/yangao07/abPOA).
@@ -94,8 +98,8 @@ cd TideHunter; make
 ### <a name="binary"></a>Pre-built binary executable file for Linux/Unix 
 If you meet any compiling issue, please try the pre-built binary file:
 ```
-wget https://github.com/yangao07/TideHunter/releases/download/v1.5.4/TideHunter-v1.5.4_x64-linux.tar.gz
-tar -zxvf TideHunter-v1.5.4_x64-linux.tar.gz
+wget https://github.com/yangao07/TideHunter/releases/download/v1.5.5/TideHunter-v1.5.5_x64-linux.tar.gz
+tar -zxvf TideHunter-v1.5.5_x64-linux.tar.gz
 ```
 
 ## <a name="start"></a>Getting started with toy example in `test_data`
@@ -132,13 +136,13 @@ TideHunter -u -f 2 ./test_data/test_1000x10.fa > unit.out
 ```
 Usage:   TideHunter [options] in.fa/fq > cons.fa
 
-Options: 
+Options:
   Seeding:
     -k --kmer-length INT    k-mer length (no larger than 16) [8]
     -w --window-size INT    window size, set as >1 to enable minimizer seeding [1]
     -H --HPC-kmer           use homopolymer-compressed k-mer [False]
   Tandem repeat criteria:
-    -c --min-copy    INT    minimum copy number of tandem repeat [2]
+    -c --min-copy    INT    minimum copy number of tandem repeat (>=2) [2]
     -e --max-diverg  INT    maximum allowed divergence rate between two consecutive repeats [0.25]
     -p --min-period  INT    minimum period size of tandem repeat (>=2) [30]
     -P --max-period  INT    maximum period size of tandem repeat (<=4294967295) [10K]
@@ -163,12 +167,17 @@ Options:
                             if r is integer: R = r
     -u --unit-seq           only output unit sequences of each tandem repeat, no consensus sequence [False]
     -l --longest            only output consensus sequence of tandem repeat that covers the longest read sequence [False]
-    -F --full-len           only output full-length consensus sequence [False]
+    -F --full-len           only output full-length consensus sequence. [False]
+                            full-length: consensus sequence contains both 5' and 3' adapter sequence
+                            *Note* only effective when -5 and -3 are provided.
+    -s --single-copy        output additional single-copy full-length consensus sequence. [False]
+                            *Note* only effective when -F is set and -5 and -3 are provided.
     -f --out-fmt     INT    output format [1]
                             - 1: FASTA
                             - 2: Tabular
                             - 3: FASTQ
-                              qualiy score of each base represents the ratio of the consensus coverage to the # total copies.
+                            - 4: Tabular with quality score
+                              for [3] and [4], qualiy score of each base represents the ratio of the consensus coverage to the # total copies.
   Computing resource:
     -t --thread      INT    number of threads to use [4]
 

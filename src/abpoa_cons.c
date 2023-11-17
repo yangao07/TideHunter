@@ -58,7 +58,7 @@ int abpoa_gen_cons(abpoa_t *ab, abpoa_para_t *abpt, uint8_t *bseqs, int seq_len,
     if (mtp->min_frac > 0.0) min_cov = (int)(n_seqs * mtp->min_frac);
     else if (mtp->min_cov > 0) min_cov = mtp->min_cov;
     if (n_seqs <= 2) {
-        if (n_seqs <= 1) err_fatal_simple("No enough sequences to perform msa.\n");
+        if (n_seqs <= 1) err_fatal_simple("Not enough sequences to perform msa.\n");
         cons_len = seq_lens[0];
 
         int skip = 0;

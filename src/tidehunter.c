@@ -46,7 +46,7 @@ int tidehunter_core(kseq_t *read_seq, tandem_seq_t *tseq, mini_tandem_para *mtp,
     }
     free(bseq);
 
-    if (tseq->cons_n == 0 && mtp->only_full_length && mtp->five_seq != NULL && mtp->three_seq != NULL) { // for 1-copy full-length seq
+    if (mtp->single_copy == 1 && mtp->only_full_length && mtp->five_seq != NULL && mtp->three_seq != NULL) { // for 1-copy full-length seq
         single_copy_full_len_seq(seq_len, seq, tseq, mtp);
     }
 
