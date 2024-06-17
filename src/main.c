@@ -440,7 +440,7 @@ int main(int argc, char *argv[])
 	mini_tandem_para *mtp = mini_tandem_init_para();
 	int c, op_idx=0; char *s; double x, realtime0 = realtime();
 
-	while ((c = getopt_long(argc, argv, "k:w:m:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ur:qlFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
+	while ((c = getopt_long(argc, argv, "k:w:m:Hhvc:e:p:P:M:X:E:O:5:3:a:o:ur:qslFf:t:", mini_tandem_opt, &op_idx)) >= 0) {
 		switch(c)
 		{
             case 'h': return usage();
